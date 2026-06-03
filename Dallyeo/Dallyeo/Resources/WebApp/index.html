@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>달여 - 브릿지 테스트</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: calc(var(--sat, 0px) + 20px) 20px calc(var(--sab, 0px) + 20px);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .subtitle {
+            text-align: center;
+            opacity: 0.8;
+            margin-bottom: 32px;
+        }
+
+        .section {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            backdrop-filter: blur(10px);
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            opacity: 0.8;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 16px;
+            margin-bottom: 8px;
+            border: none;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+
+        .btn:last-child {
+            margin-bottom: 0;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-icon {
+            margin-right: 8px;
+        }
+
+        #log {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 16px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+            line-height: 1.6;
+        }
+
+        .log-time {
+            opacity: 0.6;
+        }
+
+        .log-success {
+            color: #4ade80;
+        }
+
+        .log-error {
+            color: #f87171;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏃 달여</h1>
+        <p class="subtitle">Native Bridge 테스트</p>
+
+        <div class="section">
+            <div class="section-title">네비게이션</div>
+            <button class="btn" onclick="testOpenCourseSearch()">
+                <span class="btn-icon">🔍</span>코스 검색 열기 (V04)
+            </button>
+            <button class="btn" onclick="testOpenCourseConfirm()">
+                <span class="btn-icon">✅</span>코스 확인 열기 (V08)
+            </button>
+            <button class="btn" onclick="testStartRun()">
+                <span class="btn-icon">▶️</span>러닝 시작 (V09)
+            </button>
+        </div>
+
+        <div class="section">
+            <div class="section-title">권한</div>
+            <button class="btn" onclick="testGetLocationPermission()">
+                <span class="btn-icon">📍</span>위치 권한 상태 확인
+            </button>
+            <button class="btn" onclick="testRequestLocationPermission()">
+                <span class="btn-icon">🔓</span>위치 권한 요청
+            </button>
+            <button class="btn" onclick="testOpenSettings()">
+                <span class="btn-icon">⚙️</span>설정 앱 열기
+            </button>
+        </div>
+
+        <div class="section">
+            <div class="section-title">기타</div>
+            <button class="btn" onclick="testShare()">
+                <span class="btn-icon">📤</span>공유하기
+            </button>
+            <button class="btn" onclick="testOpenExternalUrl()">
+                <span class="btn-icon">🌐</span>외부 URL 열기
+            </button>
+        </div>
+
+        <div class="section">
+            <div class="section-title">로그</div>
+            <div id="log">브릿지 테스트 로그...</div>
+        </div>
+    </div>
+
+    <script>
+        function log(msg, type = 'info') {
+            const el = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            const colorClass = type === 'success' ? 'log-success' : type === 'error' ? 'log-error' : '';
+            el.innerHTML = `<span class="log-time">[${time}]</span> <span class="${colorClass}">${msg}</span>\n` + el.innerHTML;
+        }
+
+        async function testOpenCourseSearch() {
+            log('openCourseSearch 호출...');
+            try {
+                const result = await window.DallYeoBridge.call('openCourseSearch');
+                log('성공: ' + JSON.stringify(result), 'success');
+            } catch (e) {
+                log('에러: ' + JSON.stringify(e), 'error');
+            }
+        }
+
+        async function testOpenCourseConfirm() {
+            log('openCourseConfirm 호출...');
+            try {
+                const result = await window.DallYeoBridge.call('openCourseConfirm');
+                log('성공: ' + JSON.stringify(result), 'success');
+            } catch (e) {
+                log('에러: ' + JSON.stringify(e), 'error');
+            }
+        }
+
+        async function testStartRun() {
+            log('startRun 호출...');
+            try {
+                const result = await window.DallYeoBridge.call('startRun');
+                log('성공: ' + JSON.stringify(result), 'success');
+            } catch (e) {
+                log('에러: ' + JSON.stringify(e), 'error');
+            }
+        }
+
+        async function testGetLocationPermission() {
+            log('getPermissionStatus 호출...');
+            try {
+                const result = await window.DallYeoBridge.call('getPermissionStatus', { type: 'location' });
+                log('성공: ' + JSON.stringify(result), 'success');
+            } catch (e) {
+                log('에러: ' + JSON.stringify(e), 'error');
+            }
+        }
+
+        async function testRequestLocationPermission() {
+            log('requestPermission 호출...');
+            try {
+                const result = await window.DallYeoBridge.call('requestPermission', { type: 'location' });
+                log('성공: ' + JSON.stringify(result), 'success');
+            } catch (e) {
+                log('에러: ' + JSON.stringify(e), 'error');
+            }
+        }
+
+        async function testOpenSettings() {
+            log('openOSSettings 호출...');
+            try {
+                const result = await window.DallYeoBridge.call('openOSSettings');
+                log('성공: ' + JSON.stringify(result), 'success');
+            } catch (e) {
+                log('에러: ' + JSON.stringify(e), 'error');
+            }
+        }
+
+        async function testShare() {
+            log('share 호출...');
+            try {
+                const result = await window.DallYeoBridge.call('share', {
+                    text: '달여로 러닝 코스를 공유합니다! 🏃',
+                    url: 'https://dallyeo.com'
+                });
+                log('성공: ' + JSON.stringify(result), 'success');
+            } catch (e) {
+                log('에러: ' + JSON.stringify(e), 'error');
+            }
+        }
+
+        async function testOpenExternalUrl() {
+            log('openExternalUrl 호출...');
+            try {
+                const result = await window.DallYeoBridge.call('openExternalUrl', {
+                    url: 'https://www.apple.com'
+                });
+                log('성공: ' + JSON.stringify(result), 'success');
+            } catch (e) {
+                log('에러: ' + JSON.stringify(e), 'error');
+            }
+        }
+
+        // 이벤트 리스너 등록
+        window.DallYeoBridge.on('sessionChanged', (data) => {
+            log('이벤트: sessionChanged - ' + JSON.stringify(data), 'success');
+        });
+
+        window.DallYeoBridge.on('runCompleted', (data) => {
+            log('이벤트: runCompleted - ' + JSON.stringify(data), 'success');
+        });
+
+        window.DallYeoBridge.on('permissionChanged', (data) => {
+            log('이벤트: permissionChanged - ' + JSON.stringify(data), 'success');
+        });
+
+        // 초기화 로그
+        log('브릿지 초기화 완료 ✓', 'success');
+    </script>
+</body>
+</html>
