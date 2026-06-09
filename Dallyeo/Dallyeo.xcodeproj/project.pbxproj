@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		2BE636142FD85AA800221733 /* KakaoMapsSDK-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 2BE636132FD85AA800221733 /* KakaoMapsSDK-SPM */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		2BE635DD2FD00FDA00221733 /* Dallyeo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Dallyeo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -36,6 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2BE636142FD85AA800221733 /* KakaoMapsSDK-SPM in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,6 +83,7 @@
 			);
 			name = Dallyeo;
 			packageProductDependencies = (
+				2BE636132FD85AA800221733 /* KakaoMapsSDK-SPM */,
 			);
 			productName = Dallyeo;
 			productReference = 2BE635DD2FD00FDA00221733 /* Dallyeo.app */;
@@ -108,6 +114,7 @@
 			mainGroup = 2BE635D42FD00FDA00221733;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				2BE636122FD85AA800221733 /* XCRemoteSwiftPackageReference "KakaoMapsSDK-SPM" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2BE635DE2FD00FDA00221733 /* Products */;
@@ -349,6 +356,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		2BE636122FD85AA800221733 /* XCRemoteSwiftPackageReference "KakaoMapsSDK-SPM" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/kakao-mapsSDK/KakaoMapsSDK-SPM.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.12.12;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		2BE636132FD85AA800221733 /* KakaoMapsSDK-SPM */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2BE636122FD85AA800221733 /* XCRemoteSwiftPackageReference "KakaoMapsSDK-SPM" */;
+			productName = "KakaoMapsSDK-SPM";
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 2BE635D52FD00FDA00221733 /* Project object */;
 }
