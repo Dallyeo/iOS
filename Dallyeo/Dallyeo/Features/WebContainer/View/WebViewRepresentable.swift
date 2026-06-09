@@ -15,8 +15,8 @@ struct WebViewRepresentable: UIViewRepresentable {
         let config = WKWebViewConfiguration()
         let contentController = WKUserContentController()
 
-        // 브릿지 메시지 핸들러 등록
-        contentController.add(bridge, name: "DallYeoBridge")
+        // 브릿지 메시지 핸들러 등록 (FE 명세: window.webkit.messageHandlers.dallyeo)
+        contentController.add(bridge, name: "dallyeo")
 
         // 브릿지 초기화 스크립트 주입
         let bridgeScript = WKUserScript(
@@ -116,11 +116,11 @@ struct WebViewRepresentable: UIViewRepresentable {
         <body>
             <h1>🏃 달여 브릿지 테스트</h1>
 
-            <button class="btn" onclick="testOpenCourseSearch()">코스 검색 열기 (V04)</button>
+            <button class="btn" onclick="testOpenCourseSearch()">코스 검색 열기 (V04, 단방향)</button>
             <button class="btn" onclick="testGetLocationPermission()">위치 권한 확인</button>
             <button class="btn" onclick="testRequestLocationPermission()">위치 권한 요청</button>
-            <button class="btn" onclick="testOpenSettings()">설정 열기</button>
-            <button class="btn" onclick="testShare()">공유하기</button>
+            <button class="btn" onclick="testGetCurrentSession()">현재 세션 조회</button>
+            <button class="btn" onclick="testLogout()">로그아웃</button>
 
             <div id="log">로그가 여기에 표시됩니다...</div>
 
@@ -131,36 +131,41 @@ struct WebViewRepresentable: UIViewRepresentable {
                 }
 
                 async function testOpenCourseSearch() {
-                    log('openCourseSearch 호출...');
-                    const result = await window.DallYeoBridge.call('openCourseSearch');
-                    log('결과: ' + JSON.stringify(result));
+                    log('openCourseSearch 호출 (단방향)...');
+                    window.DallYeoBridge.send('openCourseSearch');
+                    log('전송 완료');
                 }
 
                 async function testGetLocationPermission() {
                     log('getPermissionStatus 호출...');
-                    const result = await window.DallYeoBridge.call('getPermissionStatus', { type: 'location' });
-                    log('결과: ' + JSON.stringify(result));
+                    try {
+                        const result = await window.DallYeoBridge.call('getPermissionStatus', { type: 'location' });
+                        log('결과: ' + JSON.stringify(result));
+                    } catch(e) { log('에러: ' + JSON.stringify(e)); }
                 }
 
                 async function testRequestLocationPermission() {
                     log('requestPermission 호출...');
-                    const result = await window.DallYeoBridge.call('requestPermission', { type: 'location' });
-                    log('결과: ' + JSON.stringify(result));
+                    try {
+                        const result = await window.DallYeoBridge.call('requestPermission', { type: 'location' });
+                        log('결과: ' + JSON.stringify(result));
+                    } catch(e) { log('에러: ' + JSON.stringify(e)); }
                 }
 
-                async function testOpenSettings() {
-                    log('openOSSettings 호출...');
-                    const result = await window.DallYeoBridge.call('openOSSettings');
-                    log('결과: ' + JSON.stringify(result));
+                async function testGetCurrentSession() {
+                    log('getCurrentSession 호출...');
+                    try {
+                        const result = await window.DallYeoBridge.call('getCurrentSession');
+                        log('결과: ' + JSON.stringify(result));
+                    } catch(e) { log('에러: ' + JSON.stringify(e)); }
                 }
 
-                async function testShare() {
-                    log('share 호출...');
-                    const result = await window.DallYeoBridge.call('share', {
-                        text: '달여로 러닝 코스를 공유합니다!',
-                        url: 'https://dallyeo.com'
-                    });
-                    log('결과: ' + JSON.stringify(result));
+                async function testLogout() {
+                    log('logout 호출...');
+                    try {
+                        await window.DallYeoBridge.call('logout');
+                        log('로그아웃 완료');
+                    } catch(e) { log('에러: ' + JSON.stringify(e)); }
                 }
 
                 // 이벤트 리스너
@@ -189,59 +194,74 @@ struct WebViewRepresentable: UIViewRepresentable {
 
     // MARK: - Bridge Init Script
 
+    // FE 명세 기준 브릿지 주입 스크립트
+    // - window.DallYeoBridge.postMessage(jsonString) 으로 웹에서 호출
+    // - 응답: window.__dallyeoBridgeResolve({ id, ok, data/error })
+    // - 이벤트: window.__dallyeoBridgeEmit({ event, payload })
     private static let bridgeInitScript = """
-    window.DallYeoBridge = {
-        _pendingRequests: {},
-        _eventListeners: {},
-        _requestId: 0,
+    (function() {
+        var _pending = {};
+        var _listeners = {};
+        var _seq = 0;
 
-        call: function(action, payload) {
-            return new Promise((resolve, reject) => {
-                const requestId = 'req_' + (++this._requestId);
-                this._pendingRequests[requestId] = { resolve, reject };
+        // 네이티브 → 웹: Promise resolve
+        window.__dallyeoBridgeResolve = function(msg) {
+            var p = _pending[msg.id];
+            if (!p) return;
+            delete _pending[msg.id];
+            if (msg.ok) { p.resolve(msg.data); }
+            else        { p.reject(msg.error); }
+        };
 
-                window.webkit.messageHandlers.DallYeoBridge.postMessage({
-                    action: action,
-                    requestId: requestId,
-                    payload: payload || {}
+        // 네이티브 → 웹: 이벤트
+        window.__dallyeoBridgeEmit = function(msg) {
+            var fns = _listeners[msg.event] || [];
+            fns.forEach(function(fn) { fn(msg.payload); });
+        };
+
+        // 웹 → 네이티브: 메시지 전송
+        window.DallYeoBridge = {
+            postMessage: function(jsonString) {
+                window.webkit.messageHandlers.dallyeo.postMessage(jsonString);
+            },
+
+            // 편의 메서드 (응답 필요)
+            call: function(method, params) {
+                return new Promise(function(resolve, reject) {
+                    var id = 'req_' + (++_seq);
+                    _pending[id] = { resolve: resolve, reject: reject };
+                    setTimeout(function() {
+                        if (_pending[id]) {
+                            delete _pending[id];
+                            reject({ kind: 'timeout' });
+                        }
+                    }, 10000);
+                    window.DallYeoBridge.postMessage(
+                        JSON.stringify({ id: id, method: method, params: params || {} })
+                    );
                 });
-            });
-        },
+            },
 
-        _handleResponse: function(response) {
-            const pending = this._pendingRequests[response.requestId];
-            if (pending) {
-                delete this._pendingRequests[response.requestId];
-                if (response.success) {
-                    pending.resolve(response.data);
-                } else {
-                    pending.reject(response.error);
-                }
+            // 편의 메서드 (단방향)
+            send: function(method, params) {
+                window.DallYeoBridge.postMessage(
+                    JSON.stringify({ method: method, params: params || {} })
+                );
+            },
+
+            on: function(event, callback) {
+                if (!_listeners[event]) { _listeners[event] = []; }
+                _listeners[event].push(callback);
+            },
+
+            off: function(event, callback) {
+                var fns = _listeners[event];
+                if (!fns) return;
+                var i = fns.indexOf(callback);
+                if (i > -1) { fns.splice(i, 1); }
             }
-        },
-
-        _emit: function(event, data) {
-            const listeners = this._eventListeners[event] || [];
-            listeners.forEach(fn => fn(data));
-        },
-
-        on: function(event, callback) {
-            if (!this._eventListeners[event]) {
-                this._eventListeners[event] = [];
-            }
-            this._eventListeners[event].push(callback);
-        },
-
-        off: function(event, callback) {
-            const listeners = this._eventListeners[event];
-            if (listeners) {
-                const index = listeners.indexOf(callback);
-                if (index > -1) {
-                    listeners.splice(index, 1);
-                }
-            }
-        }
-    };
+        };
+    })();
     """
 }
 

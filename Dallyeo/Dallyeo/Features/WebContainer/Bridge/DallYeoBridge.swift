@@ -29,203 +29,157 @@ final class DallYeoBridge: NSObject, WKScriptMessageHandler {
     }
 
     private func handleMessage(_ message: WKScriptMessage) async {
-        guard let body = message.body as? [String: Any],
-              let action = body["action"] as? String,
-              let requestId = body["requestId"] as? String else {
+        // 웹에서 JSON 문자열로 전달
+        guard let jsonString = message.body as? String,
+              let data = jsonString.data(using: .utf8),
+              let body = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let method = body["method"] as? String else {
             return
         }
 
-        let payload = body["payload"] as? [String: Any]
+        let id = body["id"] as? String
+        let params = body["params"] as? [String: Any]
 
-        await handleAction(action, payload: payload, requestId: requestId)
+        await handleMethod(method, params: params, id: id)
     }
 
-    // MARK: - Action Handler
+    // MARK: - Method Handler
 
-    private func handleAction(_ action: String, payload: [String: Any]?, requestId: String) async {
-        guard let bridgeAction = BridgeAction(rawValue: action) else {
-            reject(requestId: requestId, error: .unknownAction)
+    private func handleMethod(_ method: String, params: [String: Any]?, id: String?) async {
+        guard let bridgeMethod = BridgeMethod(rawValue: method) else {
+            if let id { reject(id: id, error: .unknownMethod) }
             return
         }
 
-        switch bridgeAction {
+        switch bridgeMethod {
         case .login:
-            await handleLogin(payload: payload, requestId: requestId)
+            guard let id else { return }
+            await handleLogin(params: params, id: id)
 
         case .logout:
-            await handleLogout(requestId: requestId)
+            guard let id else { return }
+            await handleLogout(id: id)
 
-        case .openCourseSearch:
-            coordinator?.openCourseSearch()
-            resolve(requestId: requestId)
-
-        case .openCourseConfirm:
-            coordinator?.openCourseConfirm()
-            resolve(requestId: requestId)
-
-        case .startRun:
-            coordinator?.startRun()
-            resolve(requestId: requestId)
+        case .getCurrentSession:
+            guard let id else { return }
+            handleGetCurrentSession(id: id)
 
         case .getPermissionStatus:
-            handleGetPermissionStatus(payload: payload, requestId: requestId)
+            guard let id else { return }
+            handleGetPermissionStatus(params: params, id: id)
 
         case .requestPermission:
-            await handleRequestPermission(payload: payload, requestId: requestId)
+            guard let id else { return }
+            await handleRequestPermission(params: params, id: id)
 
-        case .openOSSettings:
-            openOSSettings()
-            resolve(requestId: requestId)
+        case .openCourseSearch:
+            coordinator?.openCourseSearch()   // 단방향, 응답 없음
 
-        case .pickProfilePhoto:
-            // TODO: 이미지 피커 구현
-            reject(requestId: requestId, error: .notImplemented)
-
-        case .share:
-            handleShare(payload: payload, requestId: requestId)
-
-        case .openExternalUrl:
-            handleOpenExternalUrl(payload: payload, requestId: requestId)
+        case .openCourseConfirm:
+            coordinator?.openCourseConfirm()  // 단방향, 응답 없음
         }
     }
 
     // MARK: - Login/Logout
 
-    private func handleLogin(payload: [String: Any]?, requestId: String) async {
-        // TODO: OAuth 네이티브 로그인 구현
-        reject(requestId: requestId, error: .notImplemented)
+    private func handleLogin(params: [String: Any]?, id: String) async {
+        // TODO: OAuth 네이티브 로그인 구현 (Kakao / Apple)
+        // 취소 시 → reject(id: id, error: .cancelled)
+        reject(id: id, error: .notImplemented)
     }
 
-    private func handleLogout(requestId: String) async {
+    private func handleLogout(id: String) async {
         do {
             try KeychainManager.shared.delete(for: "session")
-            resolve(requestId: requestId)
-            emit("sessionChanged", payload: ["session": nil])
+            resolve(id: id)
+            emitSessionChanged(status: "unauthenticated")
         } catch {
-            reject(requestId: requestId, error: BridgeError(code: "LOGOUT_FAILED", message: error.localizedDescription))
+            reject(id: id, error: .custom("logout_failed"))
         }
+    }
+
+    // MARK: - Session
+
+    private func handleGetCurrentSession(id: String) {
+        // TODO: Keychain에서 세션 읽어서 반환
+        // 세션 없으면 data: null
+        resolve(id: id, data: nil)
     }
 
     // MARK: - Permission
 
-    private func handleGetPermissionStatus(payload: [String: Any]?, requestId: String) {
-        guard let typeString = payload?["type"] as? String,
+    private func handleGetPermissionStatus(params: [String: Any]?, id: String) {
+        guard let typeString = params?["type"] as? String,
               let type = PermissionType(rawValue: typeString) else {
-            reject(requestId: requestId, error: .invalidPayload)
+            reject(id: id, error: .invalidParams)
             return
         }
 
         let status = permissionHandler.getPermissionStatus(type: type)
-        resolve(requestId: requestId, data: [
-            "type": status.type.rawValue,
-            "status": status.status.rawValue
-        ])
+        resolve(id: id, data: ["status": status.status.rawValue])
     }
 
-    private func handleRequestPermission(payload: [String: Any]?, requestId: String) async {
-        guard let typeString = payload?["type"] as? String,
+    private func handleRequestPermission(params: [String: Any]?, id: String) async {
+        guard let typeString = params?["type"] as? String,
               let type = PermissionType(rawValue: typeString) else {
-            reject(requestId: requestId, error: .invalidPayload)
+            reject(id: id, error: .invalidParams)
             return
         }
 
         let status = await permissionHandler.requestPermission(type: type)
-        resolve(requestId: requestId, data: [
-            "type": status.type.rawValue,
-            "status": status.status.rawValue
-        ])
-    }
-
-    // MARK: - OS Settings
-
-    private func openOSSettings() {
-        if let url = URL(string: UIApplication.openSettingsURLString) {
-            UIApplication.shared.open(url)
-        }
-    }
-
-    // MARK: - Share
-
-    private func handleShare(payload: [String: Any]?, requestId: String) {
-        guard let text = payload?["text"] as? String else {
-            reject(requestId: requestId, error: .invalidPayload)
-            return
-        }
-
-        var items: [Any] = [text]
-
-        if let urlString = payload?["url"] as? String,
-           let url = URL(string: urlString) {
-            items.append(url)
-        }
-
-        let activityVC = UIActivityViewController(activityItems: items, applicationActivities: nil)
-
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let rootVC = windowScene.windows.first?.rootViewController {
-            rootVC.present(activityVC, animated: true)
-        }
-
-        resolve(requestId: requestId)
-    }
-
-    // MARK: - External URL
-
-    private func handleOpenExternalUrl(payload: [String: Any]?, requestId: String) {
-        guard let urlString = payload?["url"] as? String,
-              let url = URL(string: urlString) else {
-            reject(requestId: requestId, error: .invalidPayload)
-            return
-        }
-
-        UIApplication.shared.open(url)
-        resolve(requestId: requestId)
+        resolve(id: id, data: ["status": status.status.rawValue])
     }
 
     // MARK: - Promise Resolution
+    // window.__dallyeoBridgeResolve({ id, ok, data })
 
-    func resolve(requestId: String, data: [String: Any]? = nil) {
-        let response: [String: Any] = [
-            "requestId": requestId,
-            "success": true,
-            "data": data as Any
-        ]
-
-        sendResponse(response)
-    }
-
-    func reject(requestId: String, error: BridgeError) {
-        let response: [String: Any] = [
-            "requestId": requestId,
-            "success": false,
-            "error": [
-                "code": error.code,
-                "message": error.message
-            ]
-        ]
-
-        sendResponse(response)
-    }
-
-    private func sendResponse(_ response: [String: Any]) {
-        guard let jsonData = try? JSONSerialization.data(withJSONObject: response),
-              let jsonString = String(data: jsonData, encoding: .utf8) else {
-            return
+    func resolve(id: String, data: [String: Any?]? = nil) {
+        var response: [String: Any] = ["id": id, "ok": true]
+        if let data {
+            response["data"] = data
         }
-
-        let js = "window.DallYeoBridge._handleResponse(\(jsonString))"
-        webView?.evaluateJavaScript(js)
+        callResolve(response)
     }
 
-    // MARK: - Native → Web Events
+    func reject(id: String, error: BridgeErrorPayload) {
+        let response: [String: Any] = [
+            "id": id,
+            "ok": false,
+            "error": ["kind": error.kind]
+        ]
+        callResolve(response)
+    }
 
-    func emit(_ event: String, payload: [String: Any?]) {
+    private func callResolve(_ payload: [String: Any]) {
         guard let jsonData = try? JSONSerialization.data(withJSONObject: payload),
               let jsonString = String(data: jsonData, encoding: .utf8) else {
             return
         }
 
-        let js = "window.DallYeoBridge._emit('\(event)', \(jsonString))"
+        let js = "window.__dallyeoBridgeResolve(\(jsonString));"
         webView?.evaluateJavaScript(js)
+    }
+
+    // MARK: - Native → Web 이벤트
+    // window.__dallyeoBridgeEmit({ event, payload })
+
+    func emit(_ event: String, payload: [String: Any]) {
+        let message: [String: Any] = ["event": event, "payload": payload]
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: message),
+              let jsonString = String(data: jsonData, encoding: .utf8) else {
+            return
+        }
+
+        let js = "window.__dallyeoBridgeEmit(\(jsonString));"
+        webView?.evaluateJavaScript(js)
+    }
+
+    // MARK: - 편의 이벤트
+
+    func emitSessionChanged(status: String, session: [String: Any]? = nil, token: String? = nil) {
+        var payload: [String: Any] = ["status": status]
+        if let session { payload["session"] = session }
+        if let token   { payload["token"] = token }
+        emit("sessionChanged", payload: payload)
     }
 }

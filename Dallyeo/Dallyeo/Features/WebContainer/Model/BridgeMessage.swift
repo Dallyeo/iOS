@@ -8,56 +8,65 @@
 import Foundation
 
 // MARK: - Web → Native 메시지
+// 규격: { "id": "req_1", "method": "login", "params": { ... } }
+// 단방향(응답 불필요)은 id 없음: { "method": "openCourseSearch", "params": {} }
 
 struct BridgeMessage: Codable, Sendable {
-    let action: String
-    let requestId: String
-    let payload: [String: AnyCodableValue]?
+    let method: String
+    let id: String?       // 없으면 단방향 (응답 불필요)
+    let params: [String: AnyCodableValue]?
 }
 
 // MARK: - Native → Web 응답
+// window.__dallyeoBridgeResolve({ id, ok, data }) / { id, ok: false, error: { kind } }
 
 struct BridgeResponse: Codable, Sendable {
-    let requestId: String
-    let success: Bool
+    let id: String
+    let ok: Bool
     let data: AnyCodableValue?
-    let error: BridgeError?
+    let error: BridgeErrorPayload?
 
-    static func success(requestId: String, data: AnyCodableValue? = nil) -> BridgeResponse {
-        BridgeResponse(requestId: requestId, success: true, data: data, error: nil)
+    static func success(id: String, data: AnyCodableValue? = nil) -> BridgeResponse {
+        BridgeResponse(id: id, ok: true, data: data, error: nil)
     }
 
-    static func failure(requestId: String, error: BridgeError) -> BridgeResponse {
-        BridgeResponse(requestId: requestId, success: false, data: nil, error: error)
+    static func failure(id: String, error: BridgeErrorPayload) -> BridgeResponse {
+        BridgeResponse(id: id, ok: false, data: nil, error: error)
     }
 }
 
 // MARK: - 브릿지 에러
+// { kind: "cancelled" } 형식 (FE 명세 기준)
 
-struct BridgeError: Codable, Sendable {
-    let code: String
-    let message: String
+struct BridgeErrorPayload: Codable, Sendable {
+    let kind: String
 
-    static let unknownAction = BridgeError(code: "UNKNOWN_ACTION", message: "알 수 없는 액션입니다.")
-    static let invalidPayload = BridgeError(code: "INVALID_PAYLOAD", message: "잘못된 페이로드입니다.")
-    static let permissionDenied = BridgeError(code: "PERMISSION_DENIED", message: "권한이 거부되었습니다.")
-    static let notImplemented = BridgeError(code: "NOT_IMPLEMENTED", message: "아직 구현되지 않았습니다.")
+    static let cancelled     = BridgeErrorPayload(kind: "cancelled")
+    static let unknownMethod = BridgeErrorPayload(kind: "unknown_method")
+    static let invalidParams = BridgeErrorPayload(kind: "invalid_params")
+    static let notImplemented = BridgeErrorPayload(kind: "not_implemented")
+    static let permissionDenied = BridgeErrorPayload(kind: "permission_denied")
+    static func custom(_ kind: String) -> BridgeErrorPayload { BridgeErrorPayload(kind: kind) }
 }
 
-// MARK: - 브릿지 액션
+// MARK: - 브릿지 메서드 (현재 명세 기준)
 
-enum BridgeAction: String, CaseIterable, Sendable {
+enum BridgeMethod: String, CaseIterable, Sendable {
+    // 응답 필요
     case login
     case logout
+    case getCurrentSession
+    case requestPermission
+    case getPermissionStatus
+    // 단방향
     case openCourseSearch
     case openCourseConfirm
-    case startRun
-    case getPermissionStatus
-    case requestPermission
-    case openOSSettings
-    case pickProfilePhoto
-    case share
-    case openExternalUrl
+    // 향후 예약 (지금 호출 안 함)
+    // case startRun
+    // case openOSSettings
+    // case pickProfilePhoto
+    // case share
+    // case openExternalUrl
 }
 
 // MARK: - AnyCodableValue (JSON 타입 래퍼)
