@@ -8,10 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		2BE636142FD85AA800221733 /* KakaoMapsSDK-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 2BE636132FD85AA800221733 /* KakaoMapsSDK-SPM */; };
+		2BE6363E2FDEBEC000221733 /* Secrets.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 2BE6363D2FDEBEC000221733 /* Secrets.xcconfig */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		2BE635DD2FD00FDA00221733 /* Dallyeo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Dallyeo.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2BE6363D2FDEBEC000221733 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -52,6 +54,7 @@
 			children = (
 				2BE635DF2FD00FDA00221733 /* Dallyeo */,
 				2BE635DE2FD00FDA00221733 /* Products */,
+				2BE6363D2FDEBEC000221733 /* Secrets.xcconfig */,
 			);
 			sourceTree = "<group>";
 		};
@@ -131,6 +134,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2BE6363E2FDEBEC000221733 /* Secrets.xcconfig in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -149,6 +153,7 @@
 /* Begin XCBuildConfiguration section */
 		2BE635E62FD00FDB00221733 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 2BE6363D2FDEBEC000221733 /* Secrets.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -213,6 +218,7 @@
 		};
 		2BE635E72FD00FDB00221733 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 2BE6363D2FDEBEC000221733 /* Secrets.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
