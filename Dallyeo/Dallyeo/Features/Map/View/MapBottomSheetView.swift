@@ -50,14 +50,14 @@ struct MapBottomSheetView: View {
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(
                             selectedSegment == segment
-                                ? Color(hex: "#5E5E5E")
-                                : Color(hex: "#838383")
+                                ? AppColor.gray700
+                                : AppColor.gray500
                         )
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
                         .background(
                             selectedSegment == segment
-                                ? Color.white
+                                ? AppColor.white
                                 : Color.clear
                             , in: RoundedRectangle(cornerRadius: 8)
                         )
@@ -65,7 +65,7 @@ struct MapBottomSheetView: View {
             }
         }
         .padding(4)
-        .background(Color(.systemGray5), in: RoundedRectangle(cornerRadius: 10))
+        .background(AppColor.gray250, in: RoundedRectangle(cornerRadius: 10))
     }
 
     // MARK: - 그리드
@@ -88,8 +88,8 @@ struct MapBottomSheetView: View {
             LazyVGrid(columns: columns, spacing: 16) {
                 ForEach(0..<6, id: \.self) { _ in
                     RoundedRectangle(cornerRadius: 8)
-                        .fill(Color(.systemGray5))
-                        .aspectRatio(1, contentMode: .fit)
+                        .fill(AppColor.gray300)
+                        .aspectRatio(177.0 / 160.0, contentMode: .fit)
                 }
             }
             .padding(16)
@@ -102,7 +102,7 @@ struct MapBottomSheetView: View {
         VStack(spacing: 8) {
             Text("주변 장소를 불러오는 중이에요")
                 .font(.system(size: 14))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(AppColor.gray500)
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 40)

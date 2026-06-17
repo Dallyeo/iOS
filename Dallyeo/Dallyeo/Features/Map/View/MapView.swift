@@ -62,14 +62,14 @@ struct MapView: View {
             HStack(spacing: 8) {
                 Text("장소 검색")
                     .font(.system(size: 16))
-                    .foregroundStyle(Color(.placeholderText))
+                    .foregroundStyle(AppColor.gray500)
                 Spacer()
                 Image(systemName: "magnifyingglass")
-                    .foregroundStyle(Color(.label))
+                    .foregroundStyle(AppColor.gray900)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
-            .background(.white, in: RoundedRectangle(cornerRadius: 12))
+            .background(AppColor.white, in: RoundedRectangle(cornerRadius: 12))
             .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 2)
         }
     }

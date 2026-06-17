@@ -15,7 +15,7 @@ struct PlaceCardView: View {
         VStack(alignment: .leading, spacing: 6) {
             // 썸네일
             RoundedRectangle(cornerRadius: 8)
-                .fill(Color(.systemGray5))
+                .fill(AppColor.gray300)
                 .aspectRatio(177.0 / 160.0, contentMode: .fit)
                 .overlay {
                     if let urlString = place.thumbnailURL,
@@ -25,7 +25,7 @@ struct PlaceCardView: View {
                                 .resizable()
                                 .scaledToFill()
                         } placeholder: {
-                            Color(.systemGray5)
+                            AppColor.gray300
                         }
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
@@ -34,14 +34,14 @@ struct PlaceCardView: View {
             // 장소명
             Text(place.name)
                 .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(.primary)
+                .foregroundStyle(AppColor.gray900)
                 .lineLimit(2)
 
             // 거리
             if let distance = place.distance {
                 Text(distance)
                     .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppColor.gray500)
             }
         }
     }
