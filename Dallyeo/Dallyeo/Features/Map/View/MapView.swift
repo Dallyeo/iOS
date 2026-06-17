@@ -41,6 +41,19 @@ struct MapView: View {
                 places: viewModel.currentPlaces,
                 isLoading: viewModel.isLoading
             )
+            // 알럿은 항상 떠있는 시트 콘텐츠에 부착 (맵 루트에 붙이면 sheet와 표시 충돌)
+            .alert("위치 권한이 필요해요", isPresented: $viewModel.showPermissionAlert) {
+                Button("취소", role: .cancel) {}
+                Button("설정으로 이동") { viewModel.openAppSettings() }
+            } message: {
+                Text("주변 장소를 보려면 설정 > 달여에서 위치 접근을 허용해 주세요.")
+            }
+            .alert("위치를 가져올 수 없어요", isPresented: $viewModel.showGPSErrorAlert) {
+                Button("취소", role: .cancel) {}
+                Button("재시도") { viewModel.retryLocation() }
+            } message: {
+                Text("GPS 신호를 확인하고 다시 시도해 주세요.")
+            }
             // 최소: 피그마 126 → 헤더 패딩 압축 방지 위해 상향
             .presentationDetents([.height(160), .medium, .custom(MapFullDetent.self)])
             .presentationDragIndicator(.visible)
