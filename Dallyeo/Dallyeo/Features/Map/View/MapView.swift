@@ -82,8 +82,13 @@ struct MapView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
-            .background(AppColor.white, in: RoundedRectangle(cornerRadius: 12))
-            .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 2)
+            // 그림자는 배경 도형에만 적용 (전체에 걸면 텍스트·아이콘까지 그림자 묻음)
+            // Figma: box-shadow 0 4px 4px 0 rgba(0,0,0,0.25) (CSS blur 4 ≈ radius 2)
+            .background {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(AppColor.white)
+                    .shadow(color: .black.opacity(0.25), radius: 2, x: 0, y: 4)
+            }
         }
     }
 }
