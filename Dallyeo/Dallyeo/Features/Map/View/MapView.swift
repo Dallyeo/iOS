@@ -19,6 +19,8 @@ struct MapView: View {
 
     @State private var viewModel = MapViewModel()
     var onSearchTap: (() -> Void)?
+    /// 지도가 네비게이션 최상단일 때만 바텀시트 표시 (push된 화면 위로 시트가 뜨는 충돌 방지)
+    var bottomSheetVisible: Bool = true
 
     var body: some View {
         KakaoMapView(
@@ -35,7 +37,7 @@ struct MapView: View {
                 Spacer()
             }
         }
-        .sheet(isPresented: .constant(true)) {
+        .sheet(isPresented: .constant(bottomSheetVisible)) {
             MapBottomSheetView(
                 selectedSegment: $viewModel.selectedSegment,
                 places: viewModel.currentPlaces,
