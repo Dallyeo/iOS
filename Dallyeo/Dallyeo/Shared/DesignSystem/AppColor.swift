@@ -2,7 +2,7 @@
 //  AppColor.swift
 //  Dallyeo
 //
-//  디자인 시스템 색상 토큰 (현재 V03 사용분만 정의)
+//  디자인 시스템 색상 토큰 (현재 V03/V04 사용분만 정의)
 //
 
 import SwiftUI
@@ -10,7 +10,11 @@ import SwiftUI
 enum AppColor {
     static let white = Color(hex: "#FFFFFF")
 
+    // Primary (브랜드 그린)
+    static let primary = Color(hex: "#13C674")  // P_700
+
     // Gray scale
+    static let gray200 = Color(hex: "#F3F3F3")  // 화면 배경
     static let gray250 = Color(hex: "#ECECEC")  // 세그먼트 컨테이너
     static let gray300 = Color(hex: "#DFDFDF")  // 카드 썸네일 플레이스홀더
     static let gray500 = Color(hex: "#838383")  // 보조 텍스트 / 미선택
