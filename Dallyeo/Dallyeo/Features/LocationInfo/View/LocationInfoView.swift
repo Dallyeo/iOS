@@ -49,7 +49,7 @@ struct LocationInfoView: View {
     private var searchBar: some View {
         HStack(spacing: 8) {
             Button { dismiss() } label: {
-                Image(systemName: "chevron.left")
+                Image(systemName: "arrow.backward")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(AppColor.gray900)
                     .frame(width: 24, height: 24)
