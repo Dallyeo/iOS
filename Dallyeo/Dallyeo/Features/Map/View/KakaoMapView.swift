@@ -147,13 +147,31 @@ extension KakaoMapView {
         }
 
         private func markerImage() -> UIImage {
-            let config = UIImage.SymbolConfiguration(pointSize: 32, weight: .regular)
-            let base = UIImage(systemName: "mappin.circle.fill", withConfiguration: config)
-            let tinted = base?.withTintColor(
-                UIColor(red: 0x13/255, green: 0xC6/255, blue: 0x74/255, alpha: 1),
-                renderingMode: .alwaysOriginal
-            )
-            return tinted ?? UIImage()
+            // 초록 물방울(teardrop) 핀 + 흰 점 (Figma 마커 스타일)
+            let green = UIColor(red: 0x13 / 255, green: 0xC6 / 255, blue: 0x74 / 255, alpha: 1)
+            let size = CGSize(width: 30, height: 40)
+            let r: CGFloat = 13
+            let cx = size.width / 2
+            let cy = r
+
+            let renderer = UIGraphicsImageRenderer(size: size)
+            return renderer.image { _ in
+                // 물방울 본체: 위쪽 원 + 아래 꼭지점
+                let body = UIBezierPath()
+                body.addArc(withCenter: CGPoint(x: cx, y: cy), radius: r,
+                            startAngle: .pi * 0.78, endAngle: .pi * 0.22, clockwise: true)
+                body.addLine(to: CGPoint(x: cx, y: size.height))
+                body.close()
+                green.setFill()
+                body.fill()
+
+                // 흰 점
+                let dotR: CGFloat = 5
+                let dot = UIBezierPath(ovalIn: CGRect(x: cx - dotR, y: cy - dotR,
+                                                      width: dotR * 2, height: dotR * 2))
+                UIColor.white.setFill()
+                dot.fill()
+            }
         }
     }
 }
