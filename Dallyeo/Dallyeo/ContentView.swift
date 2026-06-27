@@ -7,29 +7,67 @@
 
 import SwiftUI
 
+/// 네이티브 화면 전환 경로 (V03 → V04 → V05 → V06 → V07)
+enum AppRoute: Hashable {
+    case search                       // V04
+    case searchResult(query: String)  // V05
+    case locationInfo(place: MapPlace) // V06
+    case routeEdit                     // V07
+}
+
 struct ContentView: View {
 
-    @State private var path = NavigationPath()
+    @State private var path: [AppRoute] = []
+    @State private var routeDraft = RouteDraft()
 
     var body: some View {
         NavigationStack(path: $path) {
             MapView(
-                onSearchTap: { path.append(SearchRoute.search) },
+                onSearchTap: { path.append(.search) },
                 bottomSheetVisible: path.isEmpty
             )
-                .navigationDestination(for: SearchRoute.self) { _ in
-                    SearchView(onSubmit: { _ in
-                        // TODO: V05 검색결과뷰로 이동. 지금은 검색뷰만 닫음
-                        path.removeLast()
-                    })
+            .navigationDestination(for: AppRoute.self) { route in
+                destination(for: route)
+            }
+        }
+        .environment(routeDraft)
+    }
+
+    @ViewBuilder
+    private func destination(for route: AppRoute) -> some View {
+        switch route {
+        case .search:
+            SearchView(onSubmit: { query in
+                path.append(.searchResult(query: query))
+            })
+        case .searchResult(let query):
+            SearchResultView(
+                query: query,
+                bottomSheetVisible: isTop(route),
+                onSelectPlace: { place in
+                    path.append(.locationInfo(place: place))
                 }
+            )
+        case .locationInfo(let place):
+            LocationInfoView(
+                place: place,
+                bottomSheetVisible: isTop(route),
+                onRoleSet: { path.append(.routeEdit) }
+            )
+        case .routeEdit:
+            RouteEditView(
+                draft: routeDraft,
+                onConfirm: {
+                    // TODO: V08 코스확인뷰 (MVP 1-C)
+                }
+            )
         }
     }
-}
 
-/// V03 → V04 진입 경로
-enum SearchRoute: Hashable {
-    case search
+    /// 해당 라우트가 스택 최상단인지
+    private func isTop(_ route: AppRoute) -> Bool {
+        path.last == route
+    }
 }
 
 #Preview {
