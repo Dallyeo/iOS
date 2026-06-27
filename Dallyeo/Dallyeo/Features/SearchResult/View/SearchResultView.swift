@@ -42,7 +42,7 @@ struct SearchResultView: View {
             resultSheet
                 .presentationDetents([.height(120), .medium, .large])
                 .presentationDragIndicator(.visible)
-                .presentationBackground(AppColor.gray250)
+                .presentationBackground(AppColor.white)
                 .presentationBackgroundInteraction(.enabled(upThrough: .large))
                 .interactiveDismissDisabled()
         }
@@ -102,7 +102,7 @@ struct SearchResultView: View {
             }
             .padding(16)
         }
-        .background(AppColor.gray250)
+        .background(AppColor.white)
     }
 
     private func resultRow(_ place: MapPlace) -> some View {
@@ -133,6 +133,6 @@ struct SearchResultView: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppColor.white, in: RoundedRectangle(cornerRadius: 12))
+        .background(AppColor.gray250, in: RoundedRectangle(cornerRadius: 12))
     }
 }
