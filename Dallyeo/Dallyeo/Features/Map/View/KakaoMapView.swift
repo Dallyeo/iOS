@@ -46,6 +46,7 @@ extension KakaoMapView {
 
         private var controller: KMController?
         private var mapView: KakaoMap?
+        private weak var container: KMViewContainer?
 
         // 엔진 준비 전 도착한 데이터 보류용
         private var pendingPlaces: [MapPlace]?
@@ -56,6 +57,7 @@ extension KakaoMapView {
         private let poiStyleID = "placeMarker"
 
         func setup(container: KMViewContainer) {
+            self.container = container
             controller = KMController(viewContainer: container)
             controller?.delegate = self
             _ = controller?.prepareEngine()
@@ -77,6 +79,10 @@ extension KakaoMapView {
 
         func addViewSucceeded(_ viewName: String, viewInfoName: String) {
             mapView = controller?.getView("mapview") as? KakaoMap
+            // 엔진 준비 시점에 컨테이너 실제 크기로 viewRect 설정 (찌그러짐 방지)
+            if let size = container?.bounds.size, size.width > 0, size.height > 0 {
+                mapView?.viewRect = CGRect(origin: .zero, size: size)
+            }
             registerMarkerStyle()
             // 준비 전 보류된 데이터 반영
             if let pendingLocation { updateLocation(pendingLocation) }
