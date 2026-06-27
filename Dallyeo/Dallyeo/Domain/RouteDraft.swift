@@ -15,7 +15,30 @@ final class RouteDraft {
     var waypoints: [MapPlace] = []   // 최대 3개
     var destination: MapPlace?
 
+    /// 현재 검색으로 채우려는 지점 슬롯 (V07 행 탭 → 검색 → 결과 선택 시 이 슬롯에 할당)
+    var editingSlot: EditSlot?
+
     static let maxWaypoints = 3
+
+    enum EditSlot: Equatable {
+        case start
+        case waypoint(String)   // waypoint id
+        case destination
+    }
+
+    /// 검색 결과를 편집 중인 슬롯에 할당
+    func assign(_ place: MapPlace, to slot: EditSlot) {
+        switch slot {
+        case .start:
+            start = place
+        case .destination:
+            destination = place
+        case .waypoint(let id):
+            if let idx = waypoints.firstIndex(where: { $0.id == id }) {
+                waypoints[idx] = place
+            }
+        }
+    }
 
     /// "현재 위치" 플레이스홀더 (실제 좌표는 위치 서비스 연동 시 주입)
     static func currentLocationPlace(_ coordinate: (lat: Double, lng: Double)? = nil) -> MapPlace {

@@ -12,18 +12,45 @@ struct RouteEditView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel: RouteEditViewModel
     var onConfirm: (() -> Void)?
+    /// 지점 슬롯 편집(검색으로 채우기) 요청
+    var onEditSlot: ((RouteDraft.EditSlot) -> Void)?
 
-    init(draft: RouteDraft, onConfirm: (() -> Void)? = nil) {
+    init(draft: RouteDraft,
+         onConfirm: (() -> Void)? = nil,
+         onEditSlot: ((RouteDraft.EditSlot) -> Void)? = nil) {
         _viewModel = State(initialValue: RouteEditViewModel(draft: draft))
         self.onConfirm = onConfirm
+        self.onEditSlot = onEditSlot
     }
 
     var body: some View {
         VStack(spacing: 0) {
+            // 상단: 흰 패널 (하단 라운드 + 그림자, 상태바까지 흰색)
             editPanel
-            mapArea
+                .background(
+                    UnevenRoundedRectangle(bottomLeadingRadius: 16, bottomTrailingRadius: 16)
+                        .fill(AppColor.white)
+                        .ignoresSafeArea(edges: .top)
+                        .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 4)
+                )
+
+            // 하단: 지도 (바닥까지 꽉 차게) + 거리 말풍선
+            KakaoMapView(
+                userLocation: nil,
+                places: viewModel.markerPlaces,
+                showsPlaceMarkers: true
+            )
+            .overlay(alignment: .top) {
+                Text("총 \(viewModel.totalDistanceText)")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(AppColor.white)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(AppColor.primary, in: Capsule())
+                    .padding(.top, 12)
+            }
+            .ignoresSafeArea(edges: .bottom)
         }
-        .background(AppColor.white)
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
     }
@@ -32,20 +59,23 @@ struct RouteEditView: View {
 
     private var editPanel: some View {
         VStack(spacing: 0) {
-            pointRow(name: viewModel.start?.name, placeholder: "출발지 설정", trailing: .none)
+            pointRow(name: viewModel.start?.name, placeholder: "출발지 설정",
+                     trailing: .none, slot: .start)
             Divider()
 
             ForEach(viewModel.waypoints) { wp in
                 pointRow(
                     name: wp.name.isEmpty ? nil : wp.name,
                     placeholder: "경유지 설정",
-                    trailing: .remove(wp)
+                    trailing: .remove(wp),
+                    slot: .waypoint(wp.id)
                 )
                 Divider()
             }
 
             // 도착지 행 + 경유지 추가(+)
-            pointRow(name: viewModel.destination?.name, placeholder: "도착지 설정", trailing: .add)
+            pointRow(name: viewModel.destination?.name, placeholder: "도착지 설정",
+                     trailing: .add, slot: .destination)
             Divider()
 
             HStack(spacing: 0) {
@@ -71,13 +101,16 @@ struct RouteEditView: View {
         case add
     }
 
-    private func pointRow(name: String?, placeholder: String, trailing: RowTrailing) -> some View {
+    private func pointRow(name: String?, placeholder: String,
+                          trailing: RowTrailing, slot: RouteDraft.EditSlot) -> some View {
         ZStack {
-            // 지점명 (가운데 정렬)
+            // 지점명 (가운데 정렬) — 탭 시 검색으로 설정
             Text(name ?? placeholder)
                 .font(.system(size: 16))
                 .foregroundStyle(name == nil ? AppColor.gray500 : AppColor.gray900)
                 .frame(maxWidth: .infinity, alignment: .center)
+                .contentShape(Rectangle())
+                .onTapGesture { onEditSlot?(slot) }
 
             // 핸들(좌) + 액션(우)
             HStack {
@@ -108,25 +141,5 @@ struct RouteEditView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 16)
-    }
-
-    // MARK: - 지도 + 거리
-
-    private var mapArea: some View {
-        KakaoMapView(
-            userLocation: nil,
-            places: viewModel.markerPlaces,
-            showsPlaceMarkers: true
-        )
-        .overlay(alignment: .top) {
-            // 총 거리 말풍선 (TODO: T MAP 실제 경로 거리)
-            Text("총 \(viewModel.totalDistanceText)")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(AppColor.white)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(AppColor.primary, in: Capsule())
-                .padding(.top, 12)
-        }
     }
 }

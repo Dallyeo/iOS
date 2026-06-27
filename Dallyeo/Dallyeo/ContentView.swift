@@ -45,7 +45,14 @@ struct ContentView: View {
                 query: query,
                 bottomSheetVisible: isTop(route),
                 onSelectPlace: { place in
-                    path.append(.locationInfo(place: place))
+                    if let slot = routeDraft.editingSlot {
+                        // V07에서 지점 편집 중 → 슬롯에 할당하고 V07로 복귀
+                        routeDraft.assign(place, to: slot)
+                        routeDraft.editingSlot = nil
+                        path.removeLast(2)   // searchResult + search 제거 → routeEdit
+                    } else {
+                        path.append(.locationInfo(place: place))
+                    }
                 }
             )
         case .locationInfo(let place):
@@ -59,6 +66,10 @@ struct ContentView: View {
                 draft: routeDraft,
                 onConfirm: {
                     // TODO: V08 코스확인뷰 (MVP 1-C)
+                },
+                onEditSlot: { slot in
+                    routeDraft.editingSlot = slot
+                    path.append(.search)
                 }
             )
         }
