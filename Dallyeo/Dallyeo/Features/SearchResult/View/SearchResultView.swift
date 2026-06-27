@@ -131,8 +131,9 @@ struct SearchResultView: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(12)
+        .padding(.horizontal, 17)
+        .padding(.vertical, 9)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppColor.gray250, in: RoundedRectangle(cornerRadius: 12))
+        .background(AppColor.gray200, in: RoundedRectangle(cornerRadius: 8))
     }
 }
