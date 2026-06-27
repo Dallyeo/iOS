@@ -26,6 +26,7 @@ struct KakaoMapView: UIViewRepresentable {
     }
 
     func updateUIView(_ container: KMViewContainer, context: Context) {
+        context.coordinator.syncViewRect(container.bounds.size)
         context.coordinator.updateLocation(userLocation)
         if showsPlaceMarkers {
             context.coordinator.updatePlaces(places)
@@ -88,6 +89,14 @@ extension KakaoMapView {
 
         func containerDidResized(_ size: CGSize) {
             mapView?.viewRect = CGRect(origin: .zero, size: size)
+        }
+
+        /// SwiftUI 레이아웃 크기로 viewRect 동기화 (초기 찌그러짐 방지)
+        func syncViewRect(_ size: CGSize) {
+            guard let mapView, size.width > 0, size.height > 0 else { return }
+            if mapView.viewRect.size != size {
+                mapView.viewRect = CGRect(origin: .zero, size: size)
+            }
         }
 
         // MARK: - 위치

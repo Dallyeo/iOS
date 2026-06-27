@@ -42,6 +42,7 @@ struct SearchResultView: View {
             resultSheet
                 .presentationDetents([.height(120), .medium, .large])
                 .presentationDragIndicator(.visible)
+                .presentationBackground(AppColor.gray250)
                 .presentationBackgroundInteraction(.enabled(upThrough: .large))
                 .interactiveDismissDisabled()
         }
@@ -101,7 +102,7 @@ struct SearchResultView: View {
             }
             .padding(16)
         }
-        .background(AppColor.gray200)
+        .background(AppColor.gray250)
     }
 
     private func resultRow(_ place: MapPlace) -> some View {

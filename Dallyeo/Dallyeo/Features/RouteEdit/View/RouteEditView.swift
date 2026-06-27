@@ -34,21 +34,13 @@ struct RouteEditView: View {
                         .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 4)
                 )
 
-            // 하단: 지도 (바닥까지 꽉 차게) + 거리 말풍선
+            // 하단: 지도 (바닥까지 꽉 차게)
+            // TODO: 거리 말풍선은 T MAP 경로 폴리라인과 함께 경로 위에 표시
             KakaoMapView(
                 userLocation: nil,
                 places: viewModel.markerPlaces,
                 showsPlaceMarkers: true
             )
-            .overlay(alignment: .top) {
-                Text("총 \(viewModel.totalDistanceText)")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(AppColor.white)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(AppColor.primary, in: Capsule())
-                    .padding(.top, 12)
-            }
             .ignoresSafeArea(edges: .bottom)
         }
         .navigationBarBackButtonHidden(true)
