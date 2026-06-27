@@ -126,6 +126,7 @@ struct LocationInfoView: View {
 
     private var roleButtons: some View {
         HStack(spacing: 8) {
+            Spacer()
             roleButton("출발", filled: false) {
                 routeDraft.setStart(place)
                 onRoleSet?()
@@ -149,8 +150,8 @@ struct LocationInfoView: View {
             Text(title)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(filled ? AppColor.white : AppColor.primary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 10)
                 .background {
                     if filled {
                         Capsule().fill(AppColor.primary)
