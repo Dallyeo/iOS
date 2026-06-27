@@ -84,9 +84,10 @@ struct SearchView: View {
                 viewModel.handleLocationChipTap()
             } label: {
                 HStack(spacing: 4) {
-                    Image(systemName: "location.north.circle")
+                    Image(systemName: "location.north.circle.fill")
                         .font(.system(size: 14))
-                        .foregroundStyle(AppColor.primary)
+                        .symbolRenderingMode(.palette)
+                        .foregroundStyle(.white, AppColor.primary)
                     Text(viewModel.locationChipText)
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(AppColor.primary)
