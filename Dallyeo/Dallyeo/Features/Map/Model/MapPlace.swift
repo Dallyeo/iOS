@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct MapPlace: Identifiable, Sendable {
+struct MapPlace: Identifiable, Sendable, Hashable {
     let id: String
     let name: String
     let category: PlaceCategory
@@ -15,6 +15,7 @@ struct MapPlace: Identifiable, Sendable {
     let longitude: Double
     let thumbnailURL: String?
     let distance: String?
+    var address: String? = nil   // V05 검색결과 등에서 사용
 }
 
 enum PlaceCategory: String, Sendable {

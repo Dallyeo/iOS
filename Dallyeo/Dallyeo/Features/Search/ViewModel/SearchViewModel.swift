@@ -23,11 +23,6 @@ final class SearchViewModel: NSObject {
     var locationAuthStatus: CLAuthorizationStatus = .notDetermined
     var currentAddress: String?                // 역지오코딩 결과 (예: "군산시 내흥2길")
 
-    // MARK: - 저장소
-
-    private let recentKey = "v04_recent_searches"
-    private let maxRecent = 10
-
     // MARK: - 위치
 
     private let locationManager = CLLocationManager()
@@ -106,32 +101,22 @@ final class SearchViewModel: NSObject {
     // MARK: - 최근 검색
 
     private func loadRecent() {
-        recentSearches = UserDefaults.standard.stringArray(forKey: recentKey) ?? []
+        recentSearches = RecentSearchStore.load()
     }
 
     func addRecent(_ term: String) {
-        let t = term.trimmingCharacters(in: .whitespaces)
-        guard !t.isEmpty else { return }
-        recentSearches.removeAll { $0 == t }          // 중복 제거 후 최상단
-        recentSearches.insert(t, at: 0)
-        if recentSearches.count > maxRecent {
-            recentSearches = Array(recentSearches.prefix(maxRecent))
-        }
-        persistRecent()
+        RecentSearchStore.add(term)
+        recentSearches = RecentSearchStore.load()
     }
 
     func removeRecent(_ term: String) {
-        recentSearches.removeAll { $0 == term }
-        persistRecent()
+        RecentSearchStore.remove(term)
+        recentSearches = RecentSearchStore.load()
     }
 
     func clearRecent() {
-        recentSearches.removeAll()
-        persistRecent()
-    }
-
-    private func persistRecent() {
-        UserDefaults.standard.set(recentSearches, forKey: recentKey)
+        RecentSearchStore.clear()
+        recentSearches = RecentSearchStore.load()
     }
 
     // MARK: - 검색 실행

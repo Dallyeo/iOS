@@ -13,6 +13,8 @@ struct KakaoMapView: UIViewRepresentable {
 
     var userLocation: CLLocationCoordinate2D?
     var places: [MapPlace]
+    /// 마커 표시 여부 (V05 검색결과 등에서 사용). 기본은 표시 안 함(V03).
+    var showsPlaceMarkers: Bool = false
 
     func makeUIView(context: Context) -> KMViewContainer {
         let bounds = UIApplication.shared.connectedScenes
@@ -25,7 +27,9 @@ struct KakaoMapView: UIViewRepresentable {
 
     func updateUIView(_ container: KMViewContainer, context: Context) {
         context.coordinator.updateLocation(userLocation)
-        context.coordinator.updatePlaces(places)
+        if showsPlaceMarkers {
+            context.coordinator.updatePlaces(places)
+        }
     }
 
     func makeCoordinator() -> Coordinator {
@@ -42,11 +46,18 @@ extension KakaoMapView {
         private var controller: KMController?
         private var mapView: KakaoMap?
 
+        // 엔진 준비 전 도착한 데이터 보류용
+        private var pendingPlaces: [MapPlace]?
+        private var pendingLocation: CLLocationCoordinate2D?
+        private var didCenterOnUser = false
+
+        private let poiLayerID = "placeLayer"
+        private let poiStyleID = "placeMarker"
+
         func setup(container: KMViewContainer) {
             controller = KMController(viewContainer: container)
             controller?.delegate = self
-            let prepared = controller?.prepareEngine()
-            print("🗺️ prepareEngine: \(prepared ?? false)")
+            _ = controller?.prepareEngine()
             controller?.activateEngine()
         }
 
@@ -64,8 +75,11 @@ extension KakaoMapView {
         }
 
         func addViewSucceeded(_ viewName: String, viewInfoName: String) {
-            print("🗺️ 지도 뷰 추가 성공: \(viewName)")
             mapView = controller?.getView("mapview") as? KakaoMap
+            registerMarkerStyle()
+            // 준비 전 보류된 데이터 반영
+            if let pendingLocation { updateLocation(pendingLocation) }
+            if let pendingPlaces { renderMarkers(pendingPlaces) }
         }
 
         func addViewFailed(_ viewName: String, viewInfoName: String) {
@@ -76,16 +90,70 @@ extension KakaoMapView {
             mapView?.viewRect = CGRect(origin: .zero, size: size)
         }
 
-        // MARK: - 업데이트
+        // MARK: - 위치
 
         func updateLocation(_ coordinate: CLLocationCoordinate2D?) {
-            guard let coord = coordinate, let mapView else { return }
+            guard let coord = coordinate else { return }
+            guard let mapView else { pendingLocation = coord; return }
+            // 사용자 위치로는 최초 1회만 카메라 이동 (이후 사용자 조작 존중)
+            guard !didCenterOnUser else { return }
+            didCenterOnUser = true
             let point = MapPoint(longitude: coord.longitude, latitude: coord.latitude)
             mapView.moveCamera(CameraUpdate.make(target: point, zoomLevel: 15, mapView: mapView))
         }
 
+        // MARK: - 마커
+
         func updatePlaces(_ places: [MapPlace]) {
-            // TODO: 마커 표시 구현
+            guard mapView != nil else { pendingPlaces = places; return }
+            renderMarkers(places)
+        }
+
+        private func registerMarkerStyle() {
+            guard let mapView else { return }
+            let manager = mapView.getLabelManager()
+            let layerOption = LabelLayerOptions(
+                layerID: poiLayerID,
+                competitionType: .none,
+                competitionUnit: .symbolFirst,
+                orderType: .rank,
+                zOrder: 10_001
+            )
+            _ = manager.addLabelLayer(option: layerOption)
+
+            let iconStyle = PoiIconStyle(symbol: markerImage(), anchorPoint: CGPoint(x: 0.5, y: 1.0))
+            let perLevel = PerLevelPoiStyle(iconStyle: iconStyle, level: 0)
+            let poiStyle = PoiStyle(styleID: poiStyleID, styles: [perLevel])
+            manager.addPoiStyle(poiStyle)
+        }
+
+        private func renderMarkers(_ places: [MapPlace]) {
+            guard let mapView else { return }
+            let manager = mapView.getLabelManager()
+            guard let layer = manager.getLabelLayer(layerID: poiLayerID) else { return }
+            layer.clearAllItems()
+            for place in places {
+                let options = PoiOptions(styleID: poiStyleID)
+                options.rank = 0
+                let point = MapPoint(longitude: place.longitude, latitude: place.latitude)
+                let poi = layer.addPoi(option: options, at: point)
+                poi?.show()
+            }
+            // 첫 마커로 카메라 이동
+            if let first = places.first {
+                let point = MapPoint(longitude: first.longitude, latitude: first.latitude)
+                mapView.moveCamera(CameraUpdate.make(target: point, zoomLevel: 15, mapView: mapView))
+            }
+        }
+
+        private func markerImage() -> UIImage {
+            let config = UIImage.SymbolConfiguration(pointSize: 32, weight: .regular)
+            let base = UIImage(systemName: "mappin.circle.fill", withConfiguration: config)
+            let tinted = base?.withTintColor(
+                UIColor(red: 0x13/255, green: 0xC6/255, blue: 0x74/255, alpha: 1),
+                renderingMode: .alwaysOriginal
+            )
+            return tinted ?? UIImage()
         }
     }
 }
