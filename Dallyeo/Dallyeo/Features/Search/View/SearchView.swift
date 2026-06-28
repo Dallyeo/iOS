@@ -39,7 +39,7 @@ struct SearchView: View {
     private var searchBar: some View {
         HStack(spacing: 8) {
             Button { dismiss() } label: {
-                Image(systemName: "chevron.left")
+                Image(systemName: "arrow.backward")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(AppColor.gray900)
                     .frame(width: 24, height: 24)
@@ -84,12 +84,10 @@ struct SearchView: View {
                 viewModel.handleLocationChipTap()
             } label: {
                 HStack(spacing: 4) {
-                    // 초록 배지 + 흰 내비게이션 화살표
-                    Image(systemName: "location.north.fill")
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: 16, height: 16)
-                        .background(AppColor.primary, in: Circle())
+                    Image(systemName: "location.north.circle.fill")
+                        .font(.system(size: 14))
+                        .symbolRenderingMode(.palette)
+                        .foregroundStyle(.white, AppColor.primary)
                     Text(viewModel.locationChipText)
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(AppColor.primary)
@@ -172,7 +170,7 @@ struct SearchView: View {
 
     private var emptyRecent: some View {
         VStack(spacing: 12) {
-            Image(systemName: "ellipsis.bubble.fill")
+            Image(systemName: "ellipsis.message.fill")
                 .font(.system(size: 40))
                 .foregroundStyle(AppColor.gray300)
             Text("최근 검색한 기록이 없어요")
