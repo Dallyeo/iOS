@@ -62,9 +62,9 @@ struct RunningView: View {
             let markerW: CGFloat = 26
             let x = max(0, min(w - markerW, w * viewModel.progressFraction - markerW / 2))
             ZStack(alignment: .topLeading) {
-                // 지도/패널 경계에 붙는 초록 라인
+                // 지도/패널 경계에 붙는 연한 초록 라인 (화살표보다 옅게)
                 Rectangle()
-                    .fill(AppColor.primary)
+                    .fill(AppColor.primary.opacity(0.4))
                     .frame(height: 5)
                 // 라인 위 초록 화살표 (달린 만큼 좌→우 이동)
                 Image(systemName: "location.north.fill")
