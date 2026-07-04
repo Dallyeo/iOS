@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import CoreLocation
 
 struct MapPlace: Identifiable, Sendable, Hashable {
     let id: String
@@ -16,6 +17,10 @@ struct MapPlace: Identifiable, Sendable, Hashable {
     let thumbnailURL: String?
     let distance: String?
     var address: String? = nil   // V05 검색결과 등에서 사용
+
+    var coordinate: CLLocationCoordinate2D {
+        CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
 }
 
 enum PlaceCategory: String, Sendable {
