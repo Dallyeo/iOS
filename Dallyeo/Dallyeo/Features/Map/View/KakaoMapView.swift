@@ -15,6 +15,8 @@ struct KakaoMapView: UIViewRepresentable {
     var places: [MapPlace]
     /// 마커 표시 여부 (V05 검색결과 등에서 사용). 기본은 표시 안 함(V03).
     var showsPlaceMarkers: Bool = false
+    /// 현위치를 따라 카메라 계속 이동 (V09 러닝). 기본은 최초 1회만.
+    var followsUser: Bool = false
 
     func makeUIView(context: Context) -> KMViewContainer {
         let bounds = UIApplication.shared.connectedScenes
@@ -27,7 +29,7 @@ struct KakaoMapView: UIViewRepresentable {
 
     func updateUIView(_ container: KMViewContainer, context: Context) {
         context.coordinator.syncViewRect(container.bounds.size)
-        context.coordinator.updateLocation(userLocation)
+        context.coordinator.updateLocation(userLocation, follow: followsUser)
         if showsPlaceMarkers {
             context.coordinator.updatePlaces(places)
         }
@@ -107,14 +109,16 @@ extension KakaoMapView {
 
         // MARK: - 위치
 
-        func updateLocation(_ coordinate: CLLocationCoordinate2D?) {
+        func updateLocation(_ coordinate: CLLocationCoordinate2D?, follow: Bool = false) {
             guard let coord = coordinate else { return }
             guard let mapView else { pendingLocation = coord; return }
-            // 사용자 위치로는 최초 1회만 카메라 이동 (이후 사용자 조작 존중)
-            guard !didCenterOnUser else { return }
+            // follow=false면 최초 1회만, follow=true면 매번 카메라 이동(V09 러닝)
+            if !follow {
+                guard !didCenterOnUser else { return }
+            }
             didCenterOnUser = true
             let point = MapPoint(longitude: coord.longitude, latitude: coord.latitude)
-            mapView.moveCamera(CameraUpdate.make(target: point, zoomLevel: 15, mapView: mapView))
+            mapView.moveCamera(CameraUpdate.make(target: point, zoomLevel: 16, mapView: mapView))
         }
 
         // MARK: - 마커
