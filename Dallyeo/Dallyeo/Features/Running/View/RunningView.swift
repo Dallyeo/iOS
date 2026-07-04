@@ -29,6 +29,7 @@ struct RunningView: View {
                     showsPlaceMarkers: true,
                     followsUser: true
                 )
+                progressBar
                 bottomPanel
             }
 
@@ -53,33 +54,63 @@ struct RunningView: View {
         }
     }
 
+    // MARK: - 진행 바 (달린 만큼 화살표 이동)
+
+    private var progressBar: some View {
+        GeometryReader { geo in
+            let w = geo.size.width
+            let markerW: CGFloat = 32
+            let x = max(0, min(w - markerW, w * viewModel.progressFraction - markerW / 2))
+            ZStack(alignment: .leading) {
+                Rectangle()
+                    .fill(AppColor.primary)
+                    .frame(height: 4)
+                    .frame(maxHeight: .infinity, alignment: .center)
+                Image(systemName: "location.north.fill")
+                    .font(.system(size: 16))
+                    .foregroundStyle(AppColor.primary)
+                    .frame(width: markerW, height: markerW)
+                    .background(AppColor.white, in: RoundedRectangle(cornerRadius: 8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8).stroke(AppColor.gray200, lineWidth: 1)
+                    )
+                    .offset(x: x)
+                    .animation(.linear(duration: 0.3), value: viewModel.progressFraction)
+            }
+        }
+        .frame(height: 32)
+        .background(AppColor.white)
+    }
+
     // MARK: - 상단 다음 지점 안내
 
     private var nextTargetBar: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "location.north.circle.fill")
-                .font(.system(size: 24))
-                .symbolRenderingMode(.palette)
-                .foregroundStyle(.white, AppColor.primary)
+        HStack(spacing: 16) {
+            VStack(spacing: 4) {
+                Image(systemName: "arrow.up.circle")
+                    .font(.system(size: 30, weight: .regular))
+                    .foregroundStyle(AppColor.gray900)
+                Text(viewModel.nextTargetLabel)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(AppColor.gray900)
+            }
 
-            Text(viewModel.nextTargetLabel)
-                .font(.system(size: 14))
-                .foregroundStyle(AppColor.gray500)
+            Divider().frame(height: 44)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(formatDistance(viewModel.remainingToNextMeters))
-                    .font(.system(size: 22, weight: .bold))
+                    .font(.system(size: 30, weight: .bold))
                     .foregroundStyle(AppColor.gray900)
                 if let name = viewModel.nextTarget?.name {
                     Text(name)
-                        .font(.system(size: 12))
+                        .font(.system(size: 14))
                         .foregroundStyle(AppColor.gray500)
                 }
             }
             Spacer()
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 14)
+        .padding(.vertical, 16)
         .background(AppColor.white)
     }
 
@@ -95,28 +126,28 @@ struct RunningView: View {
                 metric("\(viewModel.calories)", "칼로리")
             }
 
-            HStack(spacing: 10) {
+            HStack(spacing: 0) {
                 Button { viewModel.finish() } label: {
                     Text("끝내기")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(AppColor.white)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(AppColor.primary, in: RoundedRectangle(cornerRadius: 12))
+                        .padding(.vertical, 18)
                 }
+                Rectangle()
+                    .fill(AppColor.white.opacity(0.5))
+                    .frame(width: 1, height: 24)
                 Button {
                     viewModel.phase == .paused ? viewModel.resume() : viewModel.pause()
                 } label: {
                     Text(viewModel.phase == .paused ? "재개" : "일시정지")
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(AppColor.primary)
+                        .foregroundStyle(AppColor.white)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12).stroke(AppColor.primary, lineWidth: 1.5)
-                        )
+                        .padding(.vertical, 18)
                 }
             }
+            .background(AppColor.primary, in: RoundedRectangle(cornerRadius: 16))
         }
         .padding(.horizontal, 20)
         .padding(.top, 16)
@@ -127,10 +158,10 @@ struct RunningView: View {
     private func metric(_ value: String, _ label: String) -> some View {
         VStack(spacing: 4) {
             Text(value)
-                .font(.system(size: 20, weight: .bold))
+                .font(.system(size: 24, weight: .bold))
                 .foregroundStyle(AppColor.gray900)
             Text(label)
-                .font(.system(size: 12))
+                .font(.system(size: 14))
                 .foregroundStyle(AppColor.gray500)
         }
         .frame(maxWidth: .infinity)

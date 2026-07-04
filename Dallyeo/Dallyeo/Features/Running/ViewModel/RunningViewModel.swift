@@ -68,6 +68,20 @@ final class RunningViewModel: NSObject {
         return Double(nextTargetIndex) / Double(targets.count)
     }
 
+    /// 코스 총 직선 거리(m) — 출발→경유→도착
+    private var totalCourseMeters: Double {
+        guard routePlaces.count >= 2 else { return 0 }
+        return (1..<routePlaces.count).reduce(0.0) { sum, i in
+            sum + Self.distance(routePlaces[i - 1].coordinate, routePlaces[i].coordinate)
+        }
+    }
+
+    /// 진행률(0~1) — 이동 거리 기준. 하단 진행 바 화살표 위치용
+    var progressFraction: Double {
+        guard totalCourseMeters > 0 else { return 0 }
+        return min(distanceMeters / totalCourseMeters, 1)
+    }
+
     // MARK: - 설정
 
     private let locationManager = CLLocationManager()
