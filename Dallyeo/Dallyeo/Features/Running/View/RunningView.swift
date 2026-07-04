@@ -59,26 +59,23 @@ struct RunningView: View {
     private var progressBar: some View {
         GeometryReader { geo in
             let w = geo.size.width
-            let markerW: CGFloat = 32
+            let markerW: CGFloat = 26
             let x = max(0, min(w - markerW, w * viewModel.progressFraction - markerW / 2))
-            ZStack(alignment: .leading) {
+            ZStack(alignment: .topLeading) {
+                // 지도/패널 경계에 붙는 초록 라인
                 Rectangle()
                     .fill(AppColor.primary)
-                    .frame(height: 4)
-                    .frame(maxHeight: .infinity, alignment: .center)
+                    .frame(height: 5)
+                // 라인 위 초록 화살표 (달린 만큼 좌→우 이동)
                 Image(systemName: "location.north.fill")
-                    .font(.system(size: 16))
+                    .font(.system(size: 22, weight: .bold))
                     .foregroundStyle(AppColor.primary)
-                    .frame(width: markerW, height: markerW)
-                    .background(AppColor.white, in: RoundedRectangle(cornerRadius: 8))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8).stroke(AppColor.gray200, lineWidth: 1)
-                    )
-                    .offset(x: x)
+                    .frame(width: markerW)
+                    .offset(x: x, y: -4)
                     .animation(.linear(duration: 0.3), value: viewModel.progressFraction)
             }
         }
-        .frame(height: 32)
+        .frame(height: 24)
         .background(AppColor.white)
     }
 
