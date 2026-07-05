@@ -13,6 +13,7 @@ enum AppRoute: Hashable {
     case searchResult(query: String)  // V05
     case locationInfo(place: MapPlace) // V06
     case routeEdit                     // V07
+    case courseConfirm                 // V08
     case running                       // V09
 }
 
@@ -65,14 +66,17 @@ struct ContentView: View {
         case .routeEdit:
             RouteEditView(
                 draft: routeDraft,
-                onConfirm: {
-                    // TODO: V08 코스확인뷰 경유. 현재는 바로 V09로
-                    path.append(.running)
-                },
+                onConfirm: { path.append(.courseConfirm) },
                 onEditSlot: { slot in
                     routeDraft.editingSlot = slot
                     path.append(.search)
                 }
+            )
+        case .courseConfirm:
+            CourseConfirmView(
+                draft: routeDraft,
+                onEdit: { path.removeLast() },     // V07 경로수정으로 복귀
+                onStart: { path.append(.running) }
             )
         case .running:
             RunningView(
