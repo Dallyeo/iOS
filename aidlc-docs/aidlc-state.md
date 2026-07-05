@@ -1,12 +1,28 @@
 # AIDLC 상태
 
 ## 현재 단계
-Construction Phase — 코드 생성
+Construction Phase — 코드 생성 (담당 화면 V03~V09 LoFi 골격 반영 완료)
 
 ## 활성 작업
-- 브랜치: feat/v03-map-view
-- 작업: V03 지도뷰 Figma 디자인 반영
+- 브랜치: main (직전 작업 브랜치 feat/v08-course-confirm, feat/v09-running 머지 완료)
+- 다음 예정: HiFi 확정 시 디테일 반영, 백엔드 엔드포인트 준비 시 순차 연결
 
-## 완료된 인셉션 산출물
-- 요구사항: Figma 디자인 직접 분석 (V03_지도부1, 부2, 부3)
-- 변경 범위: MapBottomSheetView.swift (세그먼트 스타일), PlaceCardView.swift (이미지 비율)
+## 완료된 산출물 (V03~V09, main 반영)
+- V03 지도뷰 — 카카오맵/현재위치/바텀시트(3단계)/추천 세그먼트
+- V04 검색뷰 — 실시간 유사검색어/최근검색(UserDefaults)/무입력 방지
+- V05 검색결과뷰 — 지도 핀 + 바텀시트 카드
+- V06 위치정보뷰 — 출발/경유/도착 역할 설정
+- V07 경로수정뷰 — 경유지 편집(최대 3)/지점 슬롯 검색 재설정
+- V08 코스확인뷰 — 지도 + 코스요약 카드/러닝 시작 (LoFi 골격)
+- V09 코스진행뷰 — 카운트다운/위치추적/지표/진행 바/이탈 알림 (LoFi 반영)
+
+## 대기 중 (백엔드/웹 연동 필요)
+- 경로 폴리라인(T MAP 보행자 경로, 백엔드 프록시) — V07/V08/V09 공통
+- V08 주변 편의시설/관광지 마커 — 백엔드 `/places/along-route`
+- 검색/장소 상세 실데이터 — `/places/search`, `/places/{id}`
+- V09 → 웹 V10 `runCompleted` 브릿지 이벤트
+- HealthKit 운동 저장(entitlement)
+
+## 비고
+- 인셉션/컨스트럭션 산출물 문서(audit.md, plans/)는 V03 시점 기록만 존재. V04 이후는
+  Figma 직접 분석 → 구현 → 빌드/시뮬레이터 검증 흐름으로 진행했으나 문서화는 생략됨.
