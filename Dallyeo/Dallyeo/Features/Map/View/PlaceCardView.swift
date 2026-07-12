@@ -2,7 +2,7 @@
 //  PlaceCardView.swift
 //  Dallyeo
 //
-//  장소 카드 (바텀시트 그리드 아이템)
+//  장소 카드 (바텀시트 그리드 아이템) — HiFi
 //
 
 import SwiftUI
@@ -12,37 +12,55 @@ struct PlaceCardView: View {
     let place: MapPlace
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            // 썸네일
-            RoundedRectangle(cornerRadius: 8)
-                .fill(AppColor.gray300)
-                .aspectRatio(177.0 / 160.0, contentMode: .fit)
-                .overlay {
-                    if let urlString = place.thumbnailURL,
-                       let url = URL(string: urlString) {
-                        AsyncImage(url: url) { image in
-                            image
-                                .resizable()
-                                .scaledToFill()
-                        } placeholder: {
-                            AppColor.gray300
-                        }
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+        VStack(alignment: .leading, spacing: 0) {
+            // 썸네일 (상단 라운드) — 실제 사진은 백엔드 thumbnailURL
+            thumbnail
+                .frame(height: 130)
+                .frame(maxWidth: .infinity)
+                .clipped()
+
+            // 텍스트 영역
+            VStack(alignment: .leading, spacing: 4) {
+                Text(place.name)
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(AppColor.gray900)
+                    .lineLimit(1)
+
+                HStack(spacing: 6) {
+                    if let subtitle = place.subtitle {
+                        Text(subtitle)
+                            .font(.system(size: 12))
+                            .foregroundStyle(AppColor.gray500)
+                            .lineLimit(1)
+                    }
+                    if let badge = place.badge {
+                        Text(badge)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(AppColor.primary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(AppColor.primary.opacity(0.15), in: Capsule())
                     }
                 }
-
-            // 장소명
-            Text(place.name)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(AppColor.gray900)
-                .lineLimit(2)
-
-            // 거리
-            if let distance = place.distance {
-                Text(distance)
-                    .font(.system(size: 12))
-                    .foregroundStyle(AppColor.gray500)
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+        }
+        .background(AppColor.white)
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .shadow(color: .black.opacity(0.08), radius: 6, x: 0, y: 2)
+    }
+
+    @ViewBuilder
+    private var thumbnail: some View {
+        if let urlString = place.thumbnailURL, let url = URL(string: urlString) {
+            AsyncImage(url: url) { image in
+                image.resizable().scaledToFill()
+            } placeholder: {
+                AppColor.gray300
+            }
+        } else {
+            AppColor.gray300
         }
     }
 }

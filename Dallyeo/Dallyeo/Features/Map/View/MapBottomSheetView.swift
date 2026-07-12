@@ -47,20 +47,21 @@ struct MapBottomSheetView: View {
                     selectedSegment = segment
                 } label: {
                     Text(segment.rawValue)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: 15, weight: selectedSegment == segment ? .bold : .medium))
                         .foregroundStyle(
                             selectedSegment == segment
-                                ? AppColor.gray700
+                                ? AppColor.gray900
                                 : AppColor.gray500
                         )
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                        .background(
-                            selectedSegment == segment
-                                ? AppColor.white
-                                : Color.clear
-                            , in: RoundedRectangle(cornerRadius: 8)
-                        )
+                        .padding(.vertical, 10)
+                        .background {
+                            if selectedSegment == segment {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(AppColor.white)
+                                    .shadow(color: .black.opacity(0.1), radius: 3, x: 0, y: 1)
+                            }
+                        }
                 }
             }
         }

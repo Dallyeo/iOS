@@ -19,6 +19,8 @@ struct MapView: View {
 
     @State private var viewModel = MapViewModel()
     var onSearchTap: (() -> Void)?
+    /// 뒤로가기(웹 컨테이너 복귀). 웹뷰 연동 전까지는 placeholder.
+    var onBack: (() -> Void)?
     /// 지도가 네비게이션 최상단일 때만 바텀시트 표시 (push된 화면 위로 시트가 뜨는 충돌 방지)
     var bottomSheetVisible: Bool = true
 
@@ -31,9 +33,12 @@ struct MapView: View {
         .overlay(alignment: .top) {
             // 바텀시트가 올라와도 항상 위에 표시
             VStack {
-                searchBar
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
+                HStack(spacing: 8) {
+                    backButton
+                    searchBar
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
                 Spacer()
             }
         }
@@ -68,7 +73,25 @@ struct MapView: View {
         }
     }
 
-    // MARK: - 검색바
+    // MARK: - 뒤로가기 (플로팅 원형)
+
+    private var backButton: some View {
+        Button {
+            onBack?()
+        } label: {
+            Image(systemName: "arrow.backward")
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(AppColor.gray900)
+                .frame(width: 48, height: 48)
+                .background {
+                    Circle()
+                        .fill(AppColor.white)
+                        .shadow(color: .black.opacity(0.15), radius: 3, x: 0, y: 2)
+                }
+        }
+    }
+
+    // MARK: - 검색바 (장소 검색 + 지역칩)
 
     private var searchBar: some View {
         Button {
@@ -79,17 +102,21 @@ struct MapView: View {
                     .font(.system(size: 16))
                     .foregroundStyle(AppColor.gray500)
                 Spacer()
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(AppColor.gray900)
+                // 현재 지역 칩 (초록). TODO: 지역 선택/필터 연동
+                Text("군산")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(AppColor.white)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 6)
+                    .background(AppColor.primary, in: Capsule())
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            // 그림자는 배경 도형에만 적용 (전체에 걸면 텍스트·아이콘까지 그림자 묻음)
-            // Figma: box-shadow 0 4px 4px 0 rgba(0,0,0,0.25) (CSS blur 4 ≈ radius 2)
+            .padding(.leading, 18)
+            .padding(.trailing, 6)
+            .padding(.vertical, 6)
             .background {
-                RoundedRectangle(cornerRadius: 10)
+                Capsule()
                     .fill(AppColor.white)
-                    .shadow(color: .black.opacity(0.25), radius: 2, x: 0, y: 4)
+                    .shadow(color: .black.opacity(0.15), radius: 3, x: 0, y: 2)
             }
         }
     }
