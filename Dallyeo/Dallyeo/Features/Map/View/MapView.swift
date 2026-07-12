@@ -82,7 +82,7 @@ struct MapView: View {
             Image(systemName: "arrow.backward")
                 .font(.system(size: 18, weight: .medium))
                 .foregroundStyle(AppColor.gray900)
-                .frame(width: 48, height: 48)
+                .frame(width: 44, height: 44)
                 .background {
                     Circle()
                         .fill(AppColor.white)
@@ -104,17 +104,17 @@ struct MapView: View {
                 Spacer()
                 // 현재 지역 칩 (초록). TODO: 지역 선택/필터 연동
                 Text("군산")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(AppColor.white)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 7)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 5)
                     .background(AppColor.primary, in: RoundedRectangle(cornerRadius: 8))
             }
-            .padding(.leading, 18)
-            .padding(.trailing, 6)
-            .padding(.vertical, 6)
+            .padding(.leading, 23)
+            .padding(.trailing, 8)
+            .frame(height: 50)
             .background {
-                RoundedRectangle(cornerRadius: 14)
+                RoundedRectangle(cornerRadius: 10)
                     .fill(AppColor.white)
                     .shadow(color: .black.opacity(0.15), radius: 3, x: 0, y: 2)
             }
