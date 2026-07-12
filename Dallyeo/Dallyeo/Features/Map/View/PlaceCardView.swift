@@ -36,11 +36,15 @@ struct PlaceCardView: View {
                     Spacer(minLength: 4)
                     if let badge = place.badge {
                         Text(badge)
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(AppColor.primary)
-                            .padding(.horizontal, 10)
+                            .padding(.horizontal, 16)
                             .padding(.vertical, 5)
-                            .background(AppColor.primary.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
+                            // Figma 배지 배경 #C6F3DF
+                            .background(
+                                Color(red: 198 / 255, green: 243 / 255, blue: 223 / 255),
+                                in: RoundedRectangle(cornerRadius: 8)
+                            )
                     }
                 }
             }
