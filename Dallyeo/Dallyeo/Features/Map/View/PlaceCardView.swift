@@ -13,14 +13,14 @@ struct PlaceCardView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // 썸네일 (상단 라운드) — 실제 사진은 백엔드 thumbnailURL
+            // 썸네일 (177×173 ≈ 정사각) — 실제 사진은 백엔드 thumbnailURL
             thumbnail
-                .frame(height: 130)
+                .aspectRatio(177.0 / 173.0, contentMode: .fit)
                 .frame(maxWidth: .infinity)
                 .clipped()
 
-            // 텍스트 영역
-            VStack(alignment: .leading, spacing: 4) {
+            // 텍스트 영역 (padding 14)
+            VStack(alignment: .leading, spacing: 6) {
                 Text(place.name)
                     .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(AppColor.gray900)
@@ -44,12 +44,13 @@ struct PlaceCardView: View {
                     }
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 14)
+            .padding(.top, 10)
+            .padding(.bottom, 14)
         }
         .background(AppColor.white)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: .black.opacity(0.08), radius: 6, x: 0, y: 2)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 1)
     }
 
     @ViewBuilder
