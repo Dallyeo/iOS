@@ -40,7 +40,7 @@ struct PlaceCardView: View {
                             .foregroundStyle(AppColor.primary)
                             .padding(.horizontal, 10)
                             .padding(.vertical, 5)
-                            .background(AppColor.primary.opacity(0.15), in: Capsule())
+                            .background(AppColor.primary.opacity(0.15), in: RoundedRectangle(cornerRadius: 8))
                     }
                 }
             }
