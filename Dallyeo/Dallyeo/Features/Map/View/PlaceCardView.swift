@@ -33,12 +33,13 @@ struct PlaceCardView: View {
                             .foregroundStyle(AppColor.gray500)
                             .lineLimit(1)
                     }
+                    Spacer(minLength: 4)
                     if let badge = place.badge {
                         Text(badge)
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(AppColor.primary)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
                             .background(AppColor.primary.opacity(0.15), in: Capsule())
                     }
                 }
@@ -47,7 +48,7 @@ struct PlaceCardView: View {
             .padding(.vertical, 10)
         }
         .background(AppColor.white)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .clipShape(RoundedRectangle(cornerRadius: 20))
         .shadow(color: .black.opacity(0.08), radius: 6, x: 0, y: 2)
     }
 
