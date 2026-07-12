@@ -107,14 +107,14 @@ struct MapView: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(AppColor.white)
                     .padding(.horizontal, 14)
-                    .padding(.vertical, 6)
-                    .background(AppColor.primary, in: Capsule())
+                    .padding(.vertical, 7)
+                    .background(AppColor.primary, in: RoundedRectangle(cornerRadius: 8))
             }
             .padding(.leading, 18)
             .padding(.trailing, 6)
             .padding(.vertical, 6)
             .background {
-                Capsule()
+                RoundedRectangle(cornerRadius: 14)
                     .fill(AppColor.white)
                     .shadow(color: .black.opacity(0.15), radius: 3, x: 0, y: 2)
             }
