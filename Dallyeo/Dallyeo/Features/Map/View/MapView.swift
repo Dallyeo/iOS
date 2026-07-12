@@ -38,7 +38,6 @@ struct MapView: View {
                     searchBar
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 8)
                 Spacer()
             }
         }
