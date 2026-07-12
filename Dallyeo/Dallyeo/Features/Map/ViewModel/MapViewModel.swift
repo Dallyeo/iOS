@@ -98,7 +98,35 @@ final class MapViewModel: NSObject {
 
     func loadPlaces() async {
         isLoading = true
-        // TODO: 백엔드 API 연동
+        // TODO: 백엔드 API 연동. 현재는 HiFi 카드 확인용 목업 데이터.
+        attractions = [
+            MapPlace(id: "a1", name: "은파호수공원", category: .attraction,
+                     latitude: 35.9663, longitude: 126.7010, thumbnailURL: nil,
+                     distance: "1.2km", subtitle: "공원 · 나운동", badge: nil),
+            MapPlace(id: "a2", name: "경암동 철길마을", category: .attraction,
+                     latitude: 35.9820, longitude: 126.7190, thumbnailURL: nil,
+                     distance: "2.4km", subtitle: "명소 · 경암동", badge: nil),
+            MapPlace(id: "a3", name: "군산근대역사박물관", category: .attraction,
+                     latitude: 35.9877, longitude: 126.7115, thumbnailURL: nil,
+                     distance: "3.1km", subtitle: "박물관 · 장미동", badge: nil),
+            MapPlace(id: "a4", name: "신시도 대각산", category: .attraction,
+                     latitude: 35.8010, longitude: 126.4800, thumbnailURL: nil,
+                     distance: "5.0km", subtitle: "산 · 옥도면", badge: nil)
+        ]
+        restaurants = [
+            MapPlace(id: "r1", name: "군산 파스타", category: .restaurant,
+                     latitude: 35.9670, longitude: 126.7360, thumbnailURL: nil,
+                     distance: "0.8km", subtitle: "양식 · 수송로", badge: "착한식당"),
+            MapPlace(id: "r2", name: "스타 햄부기", category: .restaurant,
+                     latitude: 35.9690, longitude: 126.7340, thumbnailURL: nil,
+                     distance: "1.0km", subtitle: "양식 · 수송로", badge: nil),
+            MapPlace(id: "r3", name: "빈해원", category: .restaurant,
+                     latitude: 35.9855, longitude: 126.7140, thumbnailURL: nil,
+                     distance: "2.9km", subtitle: "중식 · 장미동", badge: nil),
+            MapPlace(id: "r4", name: "이성당 본점", category: .restaurant,
+                     latitude: 35.9848, longitude: 126.7126, thumbnailURL: nil,
+                     distance: "3.0km", subtitle: "베이커리 · 중앙로", badge: "착한식당")
+        ]
         isLoading = false
     }
 }

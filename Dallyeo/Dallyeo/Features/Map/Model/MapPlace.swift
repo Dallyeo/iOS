@@ -17,6 +17,8 @@ struct MapPlace: Identifiable, Sendable, Hashable {
     let thumbnailURL: String?
     let distance: String?
     var address: String? = nil   // V05 검색결과 등에서 사용
+    var subtitle: String? = nil  // "양식 · 수송로" (카테고리 · 지역)
+    var badge: String? = nil     // "착한식당" 등 배지
 
     var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
