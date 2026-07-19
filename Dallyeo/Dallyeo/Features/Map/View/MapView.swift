@@ -25,7 +25,7 @@ struct MapView: View {
     var bottomSheetVisible: Bool = true
 
     /// 바텀시트 현재 detent. 기본은 카드 1줄이 보이는 위치.
-    @State private var sheetDetent: PresentationDetent = .height(430)
+    @State private var sheetDetent: PresentationDetent = .height(380)
 
     var body: some View {
         KakaoMapView(
@@ -63,9 +63,9 @@ struct MapView: View {
             } message: {
                 Text("GPS 신호를 확인하고 다시 시도해 주세요.")
             }
-            // 최소(160): 아래로 내렸을 때만. 기본(430): 카드 1줄. 최대: 검색바 아래까지.
+            // 최소(160): 아래로 내렸을 때만. 기본(380): 카드 1줄. 최대: 검색바 아래까지.
             .presentationDetents(
-                [.height(160), .height(430), .custom(MapFullDetent.self)],
+                [.height(160), .height(380), .custom(MapFullDetent.self)],
                 selection: $sheetDetent
             )
             .presentationDragIndicator(.visible)
