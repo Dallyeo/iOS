@@ -38,6 +38,8 @@ struct PlaceCardView: View {
                         Text(badge)
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(AppColor.primary)
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 5)
                             // Figma 배지 배경 #C6F3DF
