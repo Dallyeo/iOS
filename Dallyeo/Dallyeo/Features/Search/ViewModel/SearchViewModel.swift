@@ -38,9 +38,15 @@ final class SearchViewModel: NSObject {
     /// 타이핑 중이면 유사검색어, 아니면 최근검색 노출
     var isTyping: Bool { canSearch }
 
-    /// 위치 칩 텍스트: 권한+위치 있으면 현재 주소, 아니면 권한 안내
+    /// 위치 칩 텍스트: 짧은 지역명("군산"). 위치 없으면 기본 지역.
     var locationChipText: String {
-        currentAddress ?? "위치 권한 허용"
+        guard let addr = currentAddress,
+              let city = addr.split(separator: " ").first else { return "군산" }
+        var s = String(city)
+        for suffix in ["시", "군", "구"] where s.hasSuffix(suffix) {
+            s = String(s.dropLast())
+        }
+        return s
     }
 
     // MARK: - Init
