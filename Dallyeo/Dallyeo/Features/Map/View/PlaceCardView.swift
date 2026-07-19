@@ -39,8 +39,8 @@ struct PlaceCardView: View {
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(AppColor.primary)
                             .lineLimit(1)
-                            .fixedSize(horizontal: true, vertical: false)
-                            .padding(.horizontal, 16)
+                            .layoutPriority(1)
+                            .padding(.horizontal, 6)
                             .padding(.vertical, 5)
                             // Figma 배지 배경 #C6F3DF
                             .background(

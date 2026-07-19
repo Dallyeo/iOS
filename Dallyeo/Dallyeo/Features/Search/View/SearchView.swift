@@ -21,7 +21,7 @@ struct SearchView: View {
             searchBar
                 .padding(.bottom, 8)
             content
-            Spacer(minLength: 0)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(AppColor.gray200)
         .navigationBarBackButtonHidden(true)
@@ -153,14 +153,13 @@ struct SearchView: View {
     private var emptyRecent: some View {
         VStack(spacing: 12) {
             Image(systemName: "ellipsis.message.fill")
-                .font(.system(size: 40))
+                .font(.system(size: 28))
                 .foregroundStyle(AppColor.gray300)
             Text("최근 검색 기록이 없어요")
                 .font(.system(size: 14))
                 .foregroundStyle(AppColor.gray500)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 80)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - Actions
