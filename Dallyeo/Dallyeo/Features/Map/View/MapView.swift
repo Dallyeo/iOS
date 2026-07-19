@@ -24,6 +24,9 @@ struct MapView: View {
     /// 지도가 네비게이션 최상단일 때만 바텀시트 표시 (push된 화면 위로 시트가 뜨는 충돌 방지)
     var bottomSheetVisible: Bool = true
 
+    /// 바텀시트 현재 detent. 기본은 카드 1줄이 보이는 위치.
+    @State private var sheetDetent: PresentationDetent = .height(430)
+
     var body: some View {
         KakaoMapView(
             userLocation: viewModel.userLocation,
@@ -60,8 +63,11 @@ struct MapView: View {
             } message: {
                 Text("GPS 신호를 확인하고 다시 시도해 주세요.")
             }
-            // 최소: 피그마 126 → 헤더 패딩 압축 방지 위해 상향
-            .presentationDetents([.height(160), .medium, .custom(MapFullDetent.self)])
+            // 최소(160): 아래로 내렸을 때만. 기본(430): 카드 1줄. 최대: 검색바 아래까지.
+            .presentationDetents(
+                [.height(160), .height(430), .custom(MapFullDetent.self)],
+                selection: $sheetDetent
+            )
             .presentationDragIndicator(.visible)
             .presentationBackgroundInteraction(.enabled(upThrough: .custom(MapFullDetent.self)))
             .interactiveDismissDisabled()
