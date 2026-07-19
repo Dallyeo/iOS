@@ -22,6 +22,11 @@ final class MapViewModel: NSObject {
     var userLocation: CLLocationCoordinate2D?
     var locationAuthStatus: CLAuthorizationStatus = .notDetermined
 
+    /// 현재 지역명 (검색바 지역칩). 못 구했으면 기본값.
+    var regionText: String = "군산"
+    private let geocoder = CLGeocoder()
+    private var didResolveRegion = false
+
     var isLoading: Bool = false
 
     // 권한 거부(설정 유도) / GPS 실패(재시도) 알럿
@@ -94,6 +99,22 @@ final class MapViewModel: NSObject {
         UIApplication.shared.open(url)
     }
 
+    /// 현재 위치를 역지오코딩해 지역명 갱신 (최초 1회)
+    private func resolveRegionIfNeeded(_ location: CLLocation) {
+        guard !didResolveRegion else { return }
+        didResolveRegion = true
+        geocoder.reverseGeocodeLocation(
+            location, preferredLocale: Locale(identifier: "ko_KR")
+        ) { [weak self] placemarks, _ in
+            guard let placemark = placemarks?.first,
+                  let region = RegionName.short(
+                    admin: placemark.administrativeArea,
+                    locality: placemark.locality
+                  ) else { return }
+            Task { @MainActor in self?.regionText = region }
+        }
+    }
+
     // MARK: - 데이터 로드 (백엔드 연동 전 stub)
 
     func loadPlaces() async {
@@ -139,6 +160,7 @@ extension MapViewModel: CLLocationManagerDelegate {
         guard let location = locations.last else { return }
         Task { @MainActor in
             self.userLocation = location.coordinate
+            self.resolveRegionIfNeeded(location)
         }
     }
 

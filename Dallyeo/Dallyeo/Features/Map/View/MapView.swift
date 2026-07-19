@@ -102,7 +102,7 @@ struct MapView: View {
                     .foregroundStyle(AppColor.gray500)
                 Spacer()
                 // 현재 지역 칩 (초록). TODO: 지역 선택/필터 연동
-                Text("군산")
+                Text(viewModel.regionText)
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(AppColor.white)
                     .padding(.horizontal, 16)

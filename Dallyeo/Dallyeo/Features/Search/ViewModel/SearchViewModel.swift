@@ -21,7 +21,7 @@ final class SearchViewModel: NSObject {
 
     // 위치 칩
     var locationAuthStatus: CLAuthorizationStatus = .notDetermined
-    var currentAddress: String?                // 역지오코딩 결과 (예: "군산시 내흥2길")
+    var currentRegion: String?                 // 짧은 지역명 (예: "군산", "서울")
 
     // MARK: - 위치
 
@@ -38,15 +38,9 @@ final class SearchViewModel: NSObject {
     /// 타이핑 중이면 유사검색어, 아니면 최근검색 노출
     var isTyping: Bool { canSearch }
 
-    /// 위치 칩 텍스트: 짧은 지역명("군산"). 위치 없으면 기본 지역.
+    /// 위치 칩 텍스트: 현재 지역명. 아직 못 구했으면 기본값.
     var locationChipText: String {
-        guard let addr = currentAddress,
-              let city = addr.split(separator: " ").first else { return "군산" }
-        var s = String(city)
-        for suffix in ["시", "군", "구"] where s.hasSuffix(suffix) {
-            s = String(s.dropLast())
-        }
-        return s
+        currentRegion ?? "군산"
     }
 
     // MARK: - Init
@@ -95,11 +89,12 @@ final class SearchViewModel: NSObject {
             location, preferredLocale: Locale(identifier: "ko_KR")
         ) { [weak self] placemarks, _ in
             guard let placemark = placemarks?.first else { return }
-            // "군산시 내흥2길" = locality + thoroughfare
-            let parts = [placemark.locality, placemark.thoroughfare].compactMap { $0 }
-            let address = parts.isEmpty ? placemark.name : parts.joined(separator: " ")
+            let region = RegionName.short(
+                admin: placemark.administrativeArea,
+                locality: placemark.locality
+            )
             Task { @MainActor in
-                self?.currentAddress = address
+                self?.currentRegion = region
             }
         }
     }
