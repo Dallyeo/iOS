@@ -113,6 +113,22 @@
         <p class="subtitle">Native Bridge 테스트</p>
 
         <div class="section">
+            <div class="section-title">인증</div>
+            <button class="btn" onclick="testLogin('kakao')">
+                <span class="btn-icon">💬</span>카카오 로그인
+            </button>
+            <button class="btn" onclick="testLogin('apple')">
+                <span class="btn-icon"></span>애플 로그인
+            </button>
+            <button class="btn" onclick="testGetCurrentSession()">
+                <span class="btn-icon">🔑</span>현재 세션 조회
+            </button>
+            <button class="btn" onclick="testLogout()">
+                <span class="btn-icon">🚪</span>로그아웃
+            </button>
+        </div>
+
+        <div class="section">
             <div class="section-title">네비게이션</div>
             <button class="btn" onclick="testOpenCourseSearch()">
                 <span class="btn-icon">🔍</span>코스 검색 열기 (V04)
@@ -160,6 +176,36 @@
             const time = new Date().toLocaleTimeString();
             const colorClass = type === 'success' ? 'log-success' : type === 'error' ? 'log-error' : '';
             el.innerHTML = `<span class="log-time">[${time}]</span> <span class="${colorClass}">${msg}</span>\n` + el.innerHTML;
+        }
+
+        async function testLogin(provider) {
+            log(provider + ' 로그인 호출...');
+            try {
+                const result = await window.DallYeoBridge.call('login', { provider });
+                log('성공: ' + JSON.stringify(result), 'success');
+            } catch (e) {
+                log('에러: ' + JSON.stringify(e), 'error');
+            }
+        }
+
+        async function testGetCurrentSession() {
+            log('getCurrentSession 호출...');
+            try {
+                const result = await window.DallYeoBridge.call('getCurrentSession');
+                log('결과: ' + JSON.stringify(result), 'success');
+            } catch (e) {
+                log('에러: ' + JSON.stringify(e), 'error');
+            }
+        }
+
+        async function testLogout() {
+            log('logout 호출...');
+            try {
+                await window.DallYeoBridge.call('logout');
+                log('로그아웃 완료', 'success');
+            } catch (e) {
+                log('에러: ' + JSON.stringify(e), 'error');
+            }
         }
 
         async function testOpenCourseSearch() {
