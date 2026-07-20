@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import OSLog
 import KakaoSDKCommon
 import KakaoSDKAuth
 import KakaoSDKUser
@@ -14,18 +15,21 @@ import KakaoSDKUser
 @MainActor
 final class KakaoAuthProvider: AuthProviding {
 
+    private static let log = Logger(subsystem: "com.dallyeo.app", category: "auth.kakao")
+
     func authenticate() async throws -> ProviderCredential {
         let token = try await requestLogin()
-        // 닉네임은 부가 정보 — 실패해도 로그인 자체는 성공 처리
-        let displayName = try? await fetchNickname()
+        Self.log.info("카카오 토큰 수신: idToken=\(token.idToken != nil ? "있음(OIDC)" : "없음", privacy: .public), accessToken=\(token.accessToken.isEmpty ? "없음" : "있음", privacy: .public)")
 
+        // id_token 방식으로 백엔드가 신원(sub)/프로필을 처리하므로
+        // 클라이언트에서 /v2/user/me 로 닉네임을 받지 않는다. (displayName 은 백엔드 /me 담당)
         return ProviderCredential(
             provider: .kakao,
             accessToken: token.accessToken,
             idToken: token.idToken,
             authorizationCode: nil,
             providerUserId: nil,
-            displayName: displayName
+            displayName: nil
         )
     }
 
@@ -45,18 +49,6 @@ final class KakaoAuthProvider: AuthProviding {
                 UserApi.shared.loginWithKakaoTalk(completion: handler)
             } else {
                 UserApi.shared.loginWithKakaoAccount(completion: handler)
-            }
-        }
-    }
-
-    private func fetchNickname() async throws -> String? {
-        try await withCheckedThrowingContinuation { continuation in
-            UserApi.shared.me { user, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume(returning: user?.kakaoAccount?.profile?.nickname)
-                }
             }
         }
     }

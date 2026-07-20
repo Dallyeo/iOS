@@ -8,9 +8,12 @@
 
 import AuthenticationServices
 import UIKit
+import OSLog
 
 @MainActor
 final class AppleAuthProvider: NSObject, AuthProviding {
+
+    private static let log = Logger(subsystem: "com.dallyeo.app", category: "auth.apple")
 
     private var continuation: CheckedContinuation<ProviderCredential, Error>?
     // ASAuthorizationController 는 delegate 를 weak 로 참조하므로
@@ -28,6 +31,7 @@ final class AppleAuthProvider: NSObject, AuthProviding {
             controller.delegate = self
             controller.presentationContextProvider = self
             self.controller = controller
+            Self.log.info("애플 로그인 요청 시작 (performRequests)")
             controller.performRequests()
         }
     }
@@ -49,9 +53,11 @@ extension AppleAuthProvider: ASAuthorizationControllerDelegate {
         didCompleteWithAuthorization authorization: ASAuthorization
     ) {
         guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else {
+            Self.log.error("애플 응답에 AppleIDCredential 없음")
             finish(.failure(AuthError.failed("apple_invalid_credential")))
             return
         }
+        Self.log.info("애플 로그인 성공: user=\(credential.user, privacy: .public), idToken=\(credential.identityToken != nil ? "있음" : "없음", privacy: .public)")
 
         let idToken = credential.identityToken.flatMap { String(data: $0, encoding: .utf8) }
         let authCode = credential.authorizationCode.flatMap { String(data: $0, encoding: .utf8) }
@@ -76,8 +82,11 @@ extension AppleAuthProvider: ASAuthorizationControllerDelegate {
         didCompleteWithError error: Error
     ) {
         if let authError = error as? ASAuthorizationError, authError.code == .canceled {
+            Self.log.notice("애플 로그인 취소됨 (사용자)")
             finish(.failure(AuthError.cancelled))
         } else {
+            let code = (error as? ASAuthorizationError)?.code.rawValue
+            Self.log.error("애플 로그인 실패: code=\(code ?? -1, privacy: .public) \(error.localizedDescription, privacy: .public)")
             finish(.failure(AuthError.failed(error.localizedDescription)))
         }
     }

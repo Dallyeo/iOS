@@ -8,9 +8,12 @@
 import Foundation
 import WebKit
 import UIKit
+import OSLog
 
 @MainActor
 final class DallYeoBridge: NSObject, WKScriptMessageHandler {
+
+    private static let log = Logger(subsystem: "com.dallyeo.app", category: "bridge")
 
     weak var webView: WKWebView?
     weak var coordinator: AppCoordinator?
@@ -85,12 +88,15 @@ final class DallYeoBridge: NSObject, WKScriptMessageHandler {
     private func handleLogin(params: [String: Any]?, id: String) async {
         guard let providerString = params?["provider"] as? String,
               let provider = AuthProviderKind(rawValue: providerString) else {
+            Self.log.error("login: 잘못된 provider 파라미터 (\(String(describing: params?["provider"]), privacy: .public))")
             reject(id: id, error: .invalidParams)
             return
         }
 
+        Self.log.info("login 시작: provider=\(provider.rawValue, privacy: .public)")
         do {
             let session = try await AuthService.shared.login(provider: provider)
+            Self.log.info("login 성공: userId=\(session.userId, privacy: .public)")
             resolve(id: id, data: sessionData(session))
             emitSessionChanged(
                 status: "authenticated",
@@ -100,11 +106,14 @@ final class DallYeoBridge: NSObject, WKScriptMessageHandler {
         } catch let error as AuthError {
             switch error {
             case .cancelled:
+                Self.log.notice("login 취소: provider=\(provider.rawValue, privacy: .public)")
                 reject(id: id, error: .cancelled)
             case .failed(let message):
+                Self.log.error("login 실패: provider=\(provider.rawValue, privacy: .public) msg=\(message, privacy: .public)")
                 reject(id: id, error: .failed(message))
             }
         } catch {
+            Self.log.error("login 실패(기타): \(error.localizedDescription, privacy: .public)")
             reject(id: id, error: .failed(error.localizedDescription))
         }
     }
