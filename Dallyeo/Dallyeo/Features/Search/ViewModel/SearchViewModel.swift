@@ -22,6 +22,7 @@ final class SearchViewModel: NSObject {
     // 위치 칩
     var locationAuthStatus: CLAuthorizationStatus = .notDetermined
     var currentRegion: String?                 // 짧은 지역명 (예: "군산", "서울")
+    var currentCoordinate: CLLocationCoordinate2D?   // 검색 거리순 정렬용
 
     // MARK: - 위치
 
@@ -138,15 +139,24 @@ final class SearchViewModel: NSObject {
         return term
     }
 
-    // MARK: - 유사 검색어 (TODO: 백엔드 TourAPI 키워드 검색 프록시 연동)
+    // MARK: - 유사 검색어 (카카오 키워드 검색 직접 호출)
 
     func updateSuggestions() async {
-        guard canSearch else {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else {
             suggestions = []
             return
         }
-        // TODO: 백엔드 프록시(/search?keyword=) 호출 → suggestions 채우기
-        suggestions = []
+        do {
+            let places = try await KakaoLocalService.searchKeyword(q, near: currentCoordinate, size: 15)
+            // 응답 지연 사이 검색어가 바뀌었으면 무시
+            guard q == query.trimmingCharacters(in: .whitespaces) else { return }
+            suggestions = places.map {
+                SearchSuggestion(id: $0.id, name: $0.name, address: $0.roadAddress ?? $0.address)
+            }
+        } catch {
+            suggestions = []
+        }
     }
 }
 
@@ -157,6 +167,7 @@ extension SearchViewModel: CLLocationManagerDelegate {
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
         Task { @MainActor in
+            self.currentCoordinate = location.coordinate
             self.reverseGeocode(location)
         }
     }
