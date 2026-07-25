@@ -178,10 +178,10 @@ class DallYeoBridge: NSObject, WKScriptMessageHandler {
 ## 지도/경로 규칙
 
 - 카카오맵 iOS SDK → `UIViewRepresentable`로 래핑하여 SwiftUI에서 사용.
-- T MAP 보행자 경로 API → 백엔드 프록시 경유. 카카오맵 오버레이로 시각화.
+- T MAP 보행자 경로 API → 직접/프록시 팀 결정 대기 (키 노출 트레이드오프). 카카오맵 오버레이로 시각화.
 - **V10, V12 지도 = 정적 이미지** (백엔드 제공 URL). 지도 SDK 사용 안 함. 확대/축소 없음.
 - V03~V09 지도는 확대/축소 가능.
-- 공공 API (TourAPI 등) 직접 호출 금지 → 백엔드 프록시 경유.
+- API 담당 분담(팀 협의): 공공데이터(TourAPI 등)=백엔드 프록시(승환), 카카오 주소검색·T MAP 도보경로=앱에서 직접 호출 가능. ※ "앱 직접 호출/키 임베드 금지"는 초기 권고였을 뿐 팀 규칙 아님 — 직접 호출 시 플랫폼(번들) 제한 설정 권장.
 
 ## 화면별 주요 비즈니스 로직
 
@@ -273,7 +273,7 @@ webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
 
 ## Hard Constraints
 
-- 공공 API 직접 호출 금지 → 백엔드 프록시 경유.
+- 공공데이터(TourAPI 등)는 백엔드 프록시 경유. 카카오 주소검색/T MAP 도보경로 직접 호출 여부는 팀 결정(강제 규칙 아님, 직접 시 키 플랫폼 제한 권장).
 - WebView 안에서 OAuth 핸들쉐이크 절대 금지.
 - V10/V12 지도 = 정적 이미지, 지도 SDK 사용 안 함.
 - 모든 민감 데이터 Keychain 저장.
