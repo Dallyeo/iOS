@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import CoreLocation
 
 @MainActor
 @Observable
@@ -15,36 +16,45 @@ final class SearchResultViewModel {
     var results: [MapPlace] = []
     var isLoading: Bool = false
 
+    /// 거리순 정렬용 현재 좌표 (V05 진입 시 주입 가능)
+    var currentCoordinate: CLLocationCoordinate2D?
+
     init(query: String) {
         self.query = query
         // V05 진입 시 검색어를 최근검색에 추가 (스펙)
         RecentSearchStore.add(query)
     }
 
-    /// 검색 실행 (TODO: 백엔드 TourAPI 키워드 검색 프록시 연동)
+    /// 검색 실행 (카카오 키워드 검색 직접 호출)
     func search() async {
         let term = query.trimmingCharacters(in: .whitespaces)
         guard !term.isEmpty else { return }
         RecentSearchStore.add(term)
         isLoading = true
-        // 백엔드 연동 전 stub — 군산 좌표 더미 결과 (마커/리스트 검증용)
-        results = Self.dummyResults(for: term)
-        isLoading = false
+        defer { isLoading = false }
+        do {
+            let places = try await KakaoLocalService.searchKeyword(term, near: currentCoordinate, size: 15)
+            results = places.map { Self.mapPlace(from: $0) }
+        } catch {
+            results = []
+        }
     }
 
-    // MARK: - 더미 데이터 (백엔드 연동 시 제거)
+    // MARK: - 매핑
 
-    private static func dummyResults(for term: String) -> [MapPlace] {
-        [
-            MapPlace(id: "1", name: "\(term) 군산수송점", category: .restaurant,
-                     latitude: 35.9745, longitude: 126.7180, thumbnailURL: nil,
-                     distance: nil, address: "전북특별자치도 군산시 서수송1길 2 1층"),
-            MapPlace(id: "2", name: "\(term) 군산점", category: .restaurant,
-                     latitude: 35.9678, longitude: 126.7365, thumbnailURL: nil,
-                     distance: nil, address: "전북특별자치도 군산시 조촌로 4"),
-            MapPlace(id: "3", name: "\(term) 나운점", category: .restaurant,
-                     latitude: 35.9601, longitude: 126.7012, thumbnailURL: nil,
-                     distance: nil, address: "전북특별자치도 군산시 나운로 121")
-        ]
+    private static func mapPlace(from k: KakaoPlace) -> MapPlace {
+        // 카카오 category_group_code: FD6(음식점)/CE7(카페) → 음식점, 그 외 → 관광지
+        let category: PlaceCategory = (k.categoryGroupCode == "FD6" || k.categoryGroupCode == "CE7")
+            ? .restaurant : .attraction
+        return MapPlace(
+            id: k.id,
+            name: k.name,
+            category: category,
+            latitude: k.coordinate.latitude,
+            longitude: k.coordinate.longitude,
+            thumbnailURL: nil,
+            distance: k.distance.flatMap { Int($0) }.map { $0 < 1000 ? "\($0)m" : String(format: "%.1fkm", Double($0) / 1000) },
+            address: k.roadAddress ?? k.address
+        )
     }
 }

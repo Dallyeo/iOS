@@ -4,6 +4,8 @@
 <dict>
 	<key>KAKAO_APP_KEY</key>
 	<string>$(KAKAO_APP_KEY)</string>
+	<key>KAKAO_REST_KEY</key>
+	<string>$(KAKAO_REST_KEY)</string>
 	<key>UIDesignRequiresCompatibility</key>
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
