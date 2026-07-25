@@ -38,7 +38,9 @@ struct PlaceCardView: View {
                         Text(badge)
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(AppColor.primary)
-                            .padding(.horizontal, 16)
+                            .lineLimit(1)
+                            .layoutPriority(1)
+                            .padding(.horizontal, 6)
                             .padding(.vertical, 5)
                             // Figma 배지 배경 #C6F3DF
                             .background(
@@ -47,6 +49,8 @@ struct PlaceCardView: View {
                             )
                     }
                 }
+                // 배지 유무와 무관하게 행 높이 고정 → 카드 높이 통일
+                .frame(minHeight: 24)
             }
             .padding(.horizontal, 14)
             .padding(.top, 10)
