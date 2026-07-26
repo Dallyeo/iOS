@@ -19,6 +19,8 @@ struct MapView: View {
 
     @State private var viewModel = MapViewModel()
     var onSearchTap: (() -> Void)?
+    /// 추천 카드 탭 → V06 위치정보뷰 진입
+    var onSelectPlace: ((MapPlace) -> Void)?
     /// 뒤로가기(웹 컨테이너 복귀). 웹뷰 연동 전까지는 placeholder.
     var onBack: (() -> Void)?
     /// 지도가 네비게이션 최상단일 때만 바텀시트 표시 (push된 화면 위로 시트가 뜨는 충돌 방지)
@@ -48,7 +50,8 @@ struct MapView: View {
             MapBottomSheetView(
                 selectedSegment: $viewModel.selectedSegment,
                 places: viewModel.currentPlaces,
-                isLoading: viewModel.isLoading
+                isLoading: viewModel.isLoading,
+                onSelectPlace: onSelectPlace
             )
             // 알럿은 항상 떠있는 시트 콘텐츠에 부착 (맵 루트에 붙이면 sheet와 표시 충돌)
             .alert("위치 권한이 필요해요", isPresented: $viewModel.showPermissionAlert) {

@@ -26,6 +26,7 @@ struct ContentView: View {
         NavigationStack(path: $path) {
             MapView(
                 onSearchTap: { path.append(.search) },
+                onSelectPlace: { path.append(.locationInfo(place: $0)) },
                 bottomSheetVisible: path.isEmpty
             )
             .navigationDestination(for: AppRoute.self) { route in

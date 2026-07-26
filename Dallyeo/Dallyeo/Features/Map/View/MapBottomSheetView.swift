@@ -12,6 +12,8 @@ struct MapBottomSheetView: View {
     @Binding var selectedSegment: MapViewModel.PlaceSegment
     let places: [MapPlace]
     let isLoading: Bool
+    /// 카드 탭 → V06 위치정보뷰 진입
+    var onSelectPlace: ((MapPlace) -> Void)?
 
     private let columns = [
         GridItem(.flexible(), spacing: 16),
@@ -75,7 +77,12 @@ struct MapBottomSheetView: View {
         ScrollView {
             LazyVGrid(columns: columns, spacing: 24) {   // Figma 행 간격 24
                 ForEach(places) { place in
-                    PlaceCardView(place: place)
+                    Button {
+                        onSelectPlace?(place)
+                    } label: {
+                        PlaceCardView(place: place)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
             .padding(.horizontal, 16)
