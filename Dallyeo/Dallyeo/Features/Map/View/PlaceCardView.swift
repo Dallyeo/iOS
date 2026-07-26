@@ -14,9 +14,11 @@ struct PlaceCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // 썸네일 (177×173 ≈ 정사각) — 실제 사진은 백엔드 thumbnailURL
-            thumbnail
+            // 고정 비율 박스 + 오버레이 + 클립 (scaledToFill 오버플로우 방지)
+            Rectangle()
+                .fill(AppColor.gray300)
                 .aspectRatio(177.0 / 173.0, contentMode: .fit)
-                .frame(maxWidth: .infinity)
+                .overlay { thumbnail }
                 .clipped()
 
             // 텍스트 영역 (padding 14)
