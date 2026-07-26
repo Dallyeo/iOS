@@ -115,40 +115,50 @@ final class MapViewModel: NSObject {
         }
     }
 
-    // MARK: - 데이터 로드 (백엔드 연동 전 stub)
+    // MARK: - 데이터 로드 (BE /places 연동)
 
+    private var didLoadNearby = false
+
+    /// 추천 장소 로드. 현위치 있으면 주변(nearby), 없으면 기본 지역(군산).
     func loadPlaces() async {
         isLoading = true
-        // TODO: 백엔드 API 연동. 현재는 HiFi 카드 확인용 목업 데이터.
-        attractions = [
-            MapPlace(id: "a1", name: "은파호수공원", category: .attraction,
-                     latitude: 35.9663, longitude: 126.7010, thumbnailURL: nil,
-                     distance: "1.2km", subtitle: "공원 · 나운동", badge: nil),
-            MapPlace(id: "a2", name: "경암동 철길마을", category: .attraction,
-                     latitude: 35.9820, longitude: 126.7190, thumbnailURL: nil,
-                     distance: "2.4km", subtitle: "명소 · 경암동", badge: nil),
-            MapPlace(id: "a3", name: "군산근대역사박물관", category: .attraction,
-                     latitude: 35.9877, longitude: 126.7115, thumbnailURL: nil,
-                     distance: "3.1km", subtitle: "박물관 · 장미동", badge: nil),
-            MapPlace(id: "a4", name: "신시도 대각산", category: .attraction,
-                     latitude: 35.8010, longitude: 126.4800, thumbnailURL: nil,
-                     distance: "5.0km", subtitle: "산 · 옥도면", badge: nil)
-        ]
-        restaurants = [
-            MapPlace(id: "r1", name: "군산 파스타", category: .restaurant,
-                     latitude: 35.9670, longitude: 126.7360, thumbnailURL: nil,
-                     distance: "0.8km", subtitle: "양식 · 수송로", badge: "착한식당"),
-            MapPlace(id: "r2", name: "스타 햄부기", category: .restaurant,
-                     latitude: 35.9690, longitude: 126.7340, thumbnailURL: nil,
-                     distance: "1.0km", subtitle: "양식 · 수송로", badge: nil),
-            MapPlace(id: "r3", name: "빈해원", category: .restaurant,
-                     latitude: 35.9855, longitude: 126.7140, thumbnailURL: nil,
-                     distance: "2.9km", subtitle: "중식 · 장미동", badge: nil),
-            MapPlace(id: "r4", name: "이성당 본점", category: .restaurant,
-                     latitude: 35.9848, longitude: 126.7126, thumbnailURL: nil,
-                     distance: "3.0km", subtitle: "베이커리 · 중앙로", badge: "착한식당")
-        ]
-        isLoading = false
+        defer { isLoading = false }
+        do {
+            let dtos: [PlaceSummaryDTO]
+            if let loc = userLocation {
+                dtos = try await DallyeoAPI.nearbyPlaces(lat: loc.latitude, lng: loc.longitude, radius: 3000)
+            } else {
+                dtos = try await DallyeoAPI.places(region: "GUNSAN")
+            }
+            let places = dtos.map { Self.mapPlace(from: $0) }
+            attractions = places.filter { $0.category == .attraction }
+            restaurants = places.filter { $0.category == .restaurant }
+        } catch {
+            attractions = []
+            restaurants = []
+        }
+    }
+
+    /// PlaceSummary DTO → MapPlace
+    private static func mapPlace(from d: PlaceSummaryDTO) -> MapPlace {
+        let category: PlaceCategory = d.category.uppercased() == "RESTAURANT" ? .restaurant : .attraction
+        let distance = d.distanceMeters.map { m in
+            m < 1000 ? "\(Int(m))m" : String(format: "%.1fkm", m / 1000)
+        }
+        // 시/도(첫 토큰) 제거한 축약 주소를 부제로
+        let subtitle = d.address.map { addr -> String in
+            var parts = addr.split(separator: " ").map(String.init)
+            if parts.count > 1 { parts.removeFirst() }
+            return parts.joined(separator: " ")
+        }
+        // http 이미지 → https (ATS 대응)
+        let thumb = d.thumbnailUrl?.replacingOccurrences(of: "http://", with: "https://")
+        return MapPlace(
+            id: d.id, name: d.name, category: category,
+            latitude: d.latitude, longitude: d.longitude,
+            thumbnailURL: thumb, distance: distance,
+            address: d.address, subtitle: subtitle, badge: nil
+        )
     }
 }
 
@@ -161,6 +171,11 @@ extension MapViewModel: CLLocationManagerDelegate {
         Task { @MainActor in
             self.userLocation = location.coordinate
             self.resolveRegionIfNeeded(location)
+            // 현위치 최초 확보 시 주변 장소로 재로드
+            if !self.didLoadNearby {
+                self.didLoadNearby = true
+                await self.loadPlaces()
+            }
         }
     }
 
