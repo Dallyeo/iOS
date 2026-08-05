@@ -44,9 +44,8 @@ struct PlaceCardView: View {
                             .layoutPriority(1)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 5)
-                            // Figma 배지 배경 #C6F3DF
                             .background(
-                                Color(red: 198 / 255, green: 243 / 255, blue: 223 / 255),
+                                AppColor.primary200,   // P_200
                                 in: RoundedRectangle(cornerRadius: 8)
                             )
                     }

@@ -8,6 +8,14 @@
 	<string>$(KAKAO_REST_KEY)</string>
 	<key>UIDesignRequiresCompatibility</key>
 	<true/>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Pretendard-Light.otf</string>
+		<string>Pretendard-Regular.otf</string>
+		<string>Pretendard-Medium.otf</string>
+		<string>Pretendard-SemiBold.otf</string>
+		<string>Pretendard-Bold.otf</string>
+	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>현재 위치를 지도에 표시하고 주변 장소를 추천하기 위해 위치 정보가 필요합니다.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
