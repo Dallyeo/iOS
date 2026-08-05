@@ -19,6 +19,6 @@ enum APIConfig {
            !raw.isEmpty, let url = URL(string: raw) {
             return url
         }
-        return URL(string: "https://REPLACE-WITH-BE-DOMAIN")!
+        return URL(string: "https://dallyeo.cloud")!
     }()
 }
