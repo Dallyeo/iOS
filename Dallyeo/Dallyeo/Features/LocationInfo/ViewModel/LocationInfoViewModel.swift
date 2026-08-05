@@ -57,4 +57,17 @@ final class LocationInfoViewModel {
             .map { $0.replacingOccurrences(of: "http://", with: "https://") }
             .reduce(into: [String]()) { acc, u in if !acc.contains(u) { acc.append(u) } }
     }
+
+    /// 공용 카드 데이터
+    var cardData: PlaceCardData {
+        PlaceCardData(
+            name: place.name,
+            categoryLabel: categoryLabel,
+            distance: place.distance,
+            businessHours: businessHours,
+            address: place.address,
+            badges: badges,
+            imageURLs: imageURLs
+        )
+    }
 }

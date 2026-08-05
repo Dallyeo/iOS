@@ -71,6 +71,14 @@ struct SearchResultView: View {
                     .autocorrectionDisabled()
                     .onSubmit { Task { await viewModel.search() } }
 
+                // 현재 지역 칩 (초록)
+                Text(viewModel.regionText)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(AppColor.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 5)
+                    .background(AppColor.primary, in: RoundedRectangle(cornerRadius: 8))
+
                 if !viewModel.query.isEmpty {
                     Button { viewModel.query = "" } label: {
                         Image(systemName: "xmark")
@@ -79,8 +87,9 @@ struct SearchResultView: View {
                     }
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.leading, 16)
+            .padding(.trailing, 8)
+            .padding(.vertical, 8)
             .background(AppColor.white, in: RoundedRectangle(cornerRadius: 10))
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
@@ -93,47 +102,26 @@ struct SearchResultView: View {
 
     private var resultSheet: some View {
         ScrollView {
-            LazyVStack(spacing: 12) {
-                ForEach(viewModel.results) { place in
+            LazyVStack(alignment: .leading, spacing: 10) {
+                ForEach(Array(viewModel.results.enumerated()), id: \.element.id) { index, place in
                     Button { onSelectPlace?(place) } label: {
-                        resultRow(place)
+                        PlaceSummaryCard(data: viewModel.cardData(for: place))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+
+                    // 카드 사이 구분선 (0.5pt, #B8B8B8)
+                    if index < viewModel.results.count - 1 {
+                        Rectangle()
+                            .fill(AppColor.disabled)
+                            .frame(height: 0.5)
                     }
                 }
             }
-            .padding(16)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 16)
         }
         .background(AppColor.white)
-    }
-
-    private func resultRow(_ place: MapPlace) -> some View {
-        HStack(spacing: 12) {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(AppColor.gray300)
-                .frame(width: 56, height: 56)
-                .overlay {
-                    if let urlString = place.thumbnailURL, let url = URL(string: urlString) {
-                        AsyncImage(url: url) { $0.resizable().scaledToFill() } placeholder: { Color.clear }
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                    }
-                }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(place.name)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(AppColor.gray900)
-                    .lineLimit(1)
-                if let address = place.address {
-                    Text(address)
-                        .font(.system(size: 12))
-                        .foregroundStyle(AppColor.gray500)
-                        .lineLimit(1)
-                }
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 17)
-        .padding(.vertical, 9)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppColor.gray200, in: RoundedRectangle(cornerRadius: 8))
     }
 }
