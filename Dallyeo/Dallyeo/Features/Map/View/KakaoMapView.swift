@@ -19,6 +19,8 @@ struct KakaoMapView: UIViewRepresentable {
     var followsUser: Bool = false
     /// 경로선(폴리라인) 좌표 — V07/V08 도보경로. 비어있으면 미표시.
     var routePolyline: [CLLocationCoordinate2D] = []
+    /// 종류별 마커 (출발/경유/도착/현재위치). 지정 시 place 마커 대신 이걸 표시.
+    var markers: [MapMarker] = []
 
     func makeUIView(context: Context) -> KMViewContainer {
         let bounds = UIApplication.shared.connectedScenes
@@ -32,7 +34,9 @@ struct KakaoMapView: UIViewRepresentable {
     func updateUIView(_ container: KMViewContainer, context: Context) {
         context.coordinator.syncViewRect(container.bounds.size)
         context.coordinator.updateLocation(userLocation, follow: followsUser)
-        if showsPlaceMarkers {
+        if !markers.isEmpty {
+            context.coordinator.updateMarkers(markers)
+        } else if showsPlaceMarkers {
             context.coordinator.updatePlaces(places)
         }
         context.coordinator.updateRoute(routePolyline)
@@ -55,6 +59,7 @@ extension KakaoMapView {
 
         // 엔진 준비 전 도착한 데이터 보류용
         private var pendingPlaces: [MapPlace]?
+        private var pendingMarkers: [MapMarker]?
         private var pendingLocation: CLLocationCoordinate2D?
         private var pendingRoute: [CLLocationCoordinate2D]?
         private var didCenterOnUser = false
@@ -98,7 +103,8 @@ extension KakaoMapView {
             registerMarkerStyle()
             // 준비 전 보류된 데이터 반영
             if let pendingLocation { updateLocation(pendingLocation) }
-            if let pendingPlaces { renderMarkers(pendingPlaces) }
+            if let pendingMarkers { renderTypedMarkers(pendingMarkers) }
+            else if let pendingPlaces { renderMarkers(pendingPlaces) }
             if let pendingRoute { renderRoute(pendingRoute) }
         }
 
@@ -151,10 +157,58 @@ extension KakaoMapView {
             )
             _ = manager.addLabelLayer(option: layerOption)
 
-            let iconStyle = PoiIconStyle(symbol: markerImage(), anchorPoint: CGPoint(x: 0.5, y: 1.0))
+            addPoiStyle(manager, styleID: poiStyleID, image: markerImage())
+
+            // 종류별 마커 스타일 (디자인시스템 마커 세트)
+            addPoiStyle(manager, styleID: "m_current", image: currentLocationImage())
+            addPoiStyle(manager, styleID: "m_start", image: startMarkerImage())
+            addPoiStyle(manager, styleID: "m_dest", image: destinationMarkerImage())
+            for n in 1...5 {
+                // 번호 원은 지점 위 중앙 정렬
+                addPoiStyle(manager, styleID: "m_wp\(n)", image: waypointMarkerImage(n),
+                            anchor: CGPoint(x: 0.5, y: 0.5))
+            }
+        }
+
+        private func addPoiStyle(_ manager: LabelManager, styleID: String, image: UIImage,
+                                 anchor: CGPoint = CGPoint(x: 0.5, y: 1.0)) {
+            let iconStyle = PoiIconStyle(symbol: image, anchorPoint: anchor)
             let perLevel = PerLevelPoiStyle(iconStyle: iconStyle, level: 0)
-            let poiStyle = PoiStyle(styleID: poiStyleID, styles: [perLevel])
-            manager.addPoiStyle(poiStyle)
+            manager.addPoiStyle(PoiStyle(styleID: styleID, styles: [perLevel]))
+        }
+
+        private func styleID(for kind: MapMarker.Kind) -> String {
+            switch kind {
+            case .place: return poiStyleID
+            case .currentLocation: return "m_current"
+            case .start: return "m_start"
+            case .destination: return "m_dest"
+            case .waypoint(let n): return "m_wp\(min(max(n, 1), 5))"
+            }
+        }
+
+        // MARK: - 종류별 마커
+
+        func updateMarkers(_ markers: [MapMarker]) {
+            guard mapView != nil else { pendingMarkers = markers; return }
+            renderTypedMarkers(markers)
+        }
+
+        private func renderTypedMarkers(_ markers: [MapMarker]) {
+            guard let mapView else { return }
+            let manager = mapView.getLabelManager()
+            guard let layer = manager.getLabelLayer(layerID: poiLayerID) else { return }
+            layer.clearAllItems()
+            for marker in markers {
+                let options = PoiOptions(styleID: styleID(for: marker.kind))
+                options.rank = 0
+                let point = MapPoint(longitude: marker.coordinate.longitude, latitude: marker.coordinate.latitude)
+                layer.addPoi(option: options, at: point)?.show()
+            }
+            if let first = markers.first {
+                let point = MapPoint(longitude: first.coordinate.longitude, latitude: first.coordinate.latitude)
+                mapView.moveCamera(CameraUpdate.make(target: point, zoomLevel: 15, mapView: mapView))
+            }
         }
 
         private func renderMarkers(_ places: [MapPlace]) {
@@ -220,31 +274,99 @@ extension KakaoMapView {
             route?.show()
         }
 
-        private func markerImage() -> UIImage {
-            // 초록 물방울(teardrop) 핀 + 흰 점 (Figma 마커 스타일)
-            let green = UIColor(red: 0x13 / 255, green: 0xC6 / 255, blue: 0x74 / 255, alpha: 1)
+        private static let markerGreen = UIColor(red: 0x13 / 255, green: 0xC6 / 255, blue: 0x74 / 255, alpha: 1)
+
+        /// 초록 물방울 핀 + 중앙 글리프(흰색) 그리기 공용 헬퍼
+        private func teardropMarker(_ drawGlyph: (_ center: CGPoint, _ radius: CGFloat) -> Void) -> UIImage {
             let size = CGSize(width: 30, height: 40)
             let r: CGFloat = 13
-            let cx = size.width / 2
-            let cy = r
-
+            let center = CGPoint(x: size.width / 2, y: r)
             let renderer = UIGraphicsImageRenderer(size: size)
             return renderer.image { _ in
-                // 물방울 본체: 위쪽 원 + 아래 꼭지점
                 let body = UIBezierPath()
-                body.addArc(withCenter: CGPoint(x: cx, y: cy), radius: r,
+                body.addArc(withCenter: center, radius: r,
                             startAngle: .pi * 0.78, endAngle: .pi * 0.22, clockwise: true)
-                body.addLine(to: CGPoint(x: cx, y: size.height))
+                body.addLine(to: CGPoint(x: center.x, y: size.height))
                 body.close()
-                green.setFill()
+                Self.markerGreen.setFill()
                 body.fill()
+                drawGlyph(center, r)
+            }
+        }
 
-                // 흰 점
+        // 일반 장소 / 현재위치: 흰 점
+        private func markerImage() -> UIImage {
+            teardropMarker { center, _ in
                 let dotR: CGFloat = 5
-                let dot = UIBezierPath(ovalIn: CGRect(x: cx - dotR, y: cy - dotR,
-                                                      width: dotR * 2, height: dotR * 2))
                 UIColor.white.setFill()
-                dot.fill()
+                UIBezierPath(ovalIn: CGRect(x: center.x - dotR, y: center.y - dotR,
+                                            width: dotR * 2, height: dotR * 2)).fill()
+            }
+        }
+
+        private func currentLocationImage() -> UIImage { markerImage() }
+
+        // 출발: 흰 내비 화살표(위쪽 삼각형)
+        private func startMarkerImage() -> UIImage {
+            teardropMarker { center, _ in
+                let w: CGFloat = 12, h: CGFloat = 12
+                let tri = UIBezierPath()
+                tri.move(to: CGPoint(x: center.x, y: center.y - h / 2))          // 꼭짓점(위)
+                tri.addLine(to: CGPoint(x: center.x - w / 2, y: center.y + h / 2)) // 좌하
+                tri.addLine(to: CGPoint(x: center.x, y: center.y + h / 4))        // 중앙 하단 노치
+                tri.addLine(to: CGPoint(x: center.x + w / 2, y: center.y + h / 2)) // 우하
+                tri.close()
+                UIColor.white.setFill()
+                tri.fill()
+            }
+        }
+
+        // 도착: 흰 깃발
+        private func destinationMarkerImage() -> UIImage {
+            teardropMarker { center, _ in
+                UIColor.white.setStroke()
+                UIColor.white.setFill()
+                let poleX = center.x - 4.5
+                let top = center.y - 6.0
+                // 깃대
+                let pole = UIBezierPath()
+                pole.move(to: CGPoint(x: poleX, y: top))
+                pole.addLine(to: CGPoint(x: poleX, y: center.y + 6))
+                pole.lineWidth = 1.6
+                pole.lineCapStyle = .round
+                pole.stroke()
+                // 깃발(삼각형)
+                let flag = UIBezierPath()
+                flag.move(to: CGPoint(x: poleX, y: top))
+                flag.addLine(to: CGPoint(x: poleX + 9, y: top + 3))
+                flag.addLine(to: CGPoint(x: poleX, y: top + 6))
+                flag.close()
+                flag.fill()
+            }
+        }
+
+        // 경유: 26×26 흰 원 + 초록 테두리 + 초록 번호
+        private func waypointMarkerImage(_ number: Int) -> UIImage {
+            let size = CGSize(width: 26, height: 26)
+            let renderer = UIGraphicsImageRenderer(size: size)
+            return renderer.image { _ in
+                let inset: CGFloat = 1.5
+                let rect = CGRect(x: inset, y: inset, width: size.width - inset * 2, height: size.height - inset * 2)
+                let circle = UIBezierPath(ovalIn: rect)
+                UIColor.white.setFill()
+                circle.fill()
+                Self.markerGreen.setStroke()
+                circle.lineWidth = 2
+                circle.stroke()
+
+                let text = "\(number)" as NSString
+                let attrs: [NSAttributedString.Key: Any] = [
+                    .font: UIFont.systemFont(ofSize: 14, weight: .bold),
+                    .foregroundColor: Self.markerGreen
+                ]
+                let ts = text.size(withAttributes: attrs)
+                text.draw(at: CGPoint(x: (size.width - ts.width) / 2, y: (size.height - ts.height) / 2),
+                          withAttributes: attrs)
             }
         }
     }

@@ -37,13 +37,13 @@ struct RouteEditView: View {
             // 하단: 지도 (바닥까지 꽉 차게) + T MAP 경로선 + 총거리 칩
             KakaoMapView(
                 userLocation: nil,
-                places: viewModel.markerPlaces,
-                showsPlaceMarkers: true,
-                routePolyline: viewModel.routePolyline
+                places: [],
+                routePolyline: viewModel.routePolyline,
+                markers: viewModel.mapMarkers
             )
             .ignoresSafeArea(edges: .bottom)
             .overlay(alignment: .top) {
-                if viewModel.markerPlaces.count >= 2 {
+                if viewModel.mapMarkers.count >= 2 {
                     distanceChip
                         .padding(.top, 12)
                 }

@@ -35,6 +35,23 @@ final class RouteEditViewModel {
         orderedPlaces.filter { $0.latitude != 0 && $0.longitude != 0 }
     }
 
+    /// 종류별 지도 마커 (출발=A / 경유=번호 / 도착=깃발). 빈 좌표 제외.
+    var mapMarkers: [MapMarker] {
+        var result: [MapMarker] = []
+        if let s = draft.start, s.latitude != 0 || s.longitude != 0 {
+            result.append(MapMarker(coordinate: s.coordinate, kind: .start))
+        }
+        var n = 1
+        for wp in draft.waypoints where wp.latitude != 0 || wp.longitude != 0 {
+            result.append(MapMarker(coordinate: wp.coordinate, kind: .waypoint(n)))
+            n += 1
+        }
+        if let d = draft.destination, d.latitude != 0 || d.longitude != 0 {
+            result.append(MapMarker(coordinate: d.coordinate, kind: .destination))
+        }
+        return result
+    }
+
     // MARK: - 검증 (스펙)
 
     /// 출발지·도착지 모두 설정돼야 확인 가능
