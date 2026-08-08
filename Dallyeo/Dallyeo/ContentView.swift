@@ -34,6 +34,7 @@ struct ContentView: View {
             }
         }
         .environment(routeDraft)
+        .task { LocationProvider.shared.start() }
     }
 
     @ViewBuilder

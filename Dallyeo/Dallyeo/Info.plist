@@ -6,6 +6,8 @@
 	<string>$(KAKAO_APP_KEY)</string>
 	<key>KAKAO_REST_KEY</key>
 	<string>$(KAKAO_REST_KEY)</string>
+	<key>TMAP_APP_KEY</key>
+	<string>$(TMAP_APP_KEY)</string>
 	<key>UIDesignRequiresCompatibility</key>
 	<true/>
 	<key>UIAppFonts</key>

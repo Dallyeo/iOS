@@ -12,13 +12,15 @@ import SwiftUI
 final class RouteDraft {
 
     var start: MapPlace?
-    var waypoints: [MapPlace] = []   // 최대 3개
+    var waypoints: [MapPlace] = []   // 최대 maxWaypoints개
     var destination: MapPlace?
 
     /// 현재 검색으로 채우려는 지점 슬롯 (V07 행 탭 → 검색 → 결과 선택 시 이 슬롯에 할당)
     var editingSlot: EditSlot?
 
-    static let maxWaypoints = 3
+    /// 경유지 최대 개수. Figma HiFi(경유 5개 프레임) 기준 5.
+    /// ※ CLAUDE.md에는 "최대 3개"로 적혀 있어 문서와 충돌 — 팀 확인 필요(현재는 HiFi 우선).
+    static let maxWaypoints = 5
 
     enum EditSlot: Equatable {
         case start

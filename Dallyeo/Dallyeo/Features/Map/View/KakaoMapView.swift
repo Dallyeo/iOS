@@ -17,6 +17,8 @@ struct KakaoMapView: UIViewRepresentable {
     var showsPlaceMarkers: Bool = false
     /// 현위치를 따라 카메라 계속 이동 (V09 러닝). 기본은 최초 1회만.
     var followsUser: Bool = false
+    /// 경로선(폴리라인) 좌표 — V07/V08 도보경로. 비어있으면 미표시.
+    var routePolyline: [CLLocationCoordinate2D] = []
 
     func makeUIView(context: Context) -> KMViewContainer {
         let bounds = UIApplication.shared.connectedScenes
@@ -33,6 +35,7 @@ struct KakaoMapView: UIViewRepresentable {
         if showsPlaceMarkers {
             context.coordinator.updatePlaces(places)
         }
+        context.coordinator.updateRoute(routePolyline)
     }
 
     func makeCoordinator() -> Coordinator {
@@ -53,10 +56,17 @@ extension KakaoMapView {
         // 엔진 준비 전 도착한 데이터 보류용
         private var pendingPlaces: [MapPlace]?
         private var pendingLocation: CLLocationCoordinate2D?
+        private var pendingRoute: [CLLocationCoordinate2D]?
         private var didCenterOnUser = false
 
         private let poiLayerID = "placeLayer"
         private let poiStyleID = "placeMarker"
+
+        // 경로선
+        private let routeLayerID = "routeLayer"
+        private let routeStyleID = "routeStyleSet"
+        private var didRegisterRouteStyle = false
+        private var lastRouteSignature = ""
 
         func setup(container: KMViewContainer) {
             self.container = container
@@ -89,6 +99,7 @@ extension KakaoMapView {
             // 준비 전 보류된 데이터 반영
             if let pendingLocation { updateLocation(pendingLocation) }
             if let pendingPlaces { renderMarkers(pendingPlaces) }
+            if let pendingRoute { renderRoute(pendingRoute) }
         }
 
         func addViewFailed(_ viewName: String, viewInfoName: String) {
@@ -163,6 +174,50 @@ extension KakaoMapView {
                 let point = MapPoint(longitude: first.longitude, latitude: first.latitude)
                 mapView.moveCamera(CameraUpdate.make(target: point, zoomLevel: 15, mapView: mapView))
             }
+        }
+
+        // MARK: - 경로선 (T MAP 폴리라인)
+
+        func updateRoute(_ coords: [CLLocationCoordinate2D]) {
+            guard mapView != nil else { pendingRoute = coords; return }
+            renderRoute(coords)
+        }
+
+        private func registerRouteStyleIfNeeded() {
+            guard let mapView, !didRegisterRouteStyle else { return }
+            let manager = mapView.getRouteManager()
+            _ = manager.addRouteLayer(layerID: routeLayerID, zOrder: 10_000)
+
+            let green = UIColor(red: 0x13 / 255, green: 0xC6 / 255, blue: 0x74 / 255, alpha: 1)
+            let perLevel = PerLevelRouteStyle(
+                width: 14, color: green,
+                strokeWidth: 3, strokeColor: .white, level: 0
+            )
+            let style = RouteStyle(styles: [perLevel])
+            let styleSet = RouteStyleSet(styleID: routeStyleID)
+            styleSet.addStyle(style)
+            manager.addRouteStyleSet(styleSet)
+            didRegisterRouteStyle = true
+        }
+
+        private func renderRoute(_ coords: [CLLocationCoordinate2D]) {
+            guard let mapView else { return }
+            let signature = coords.map { "\($0.latitude),\($0.longitude)" }.joined(separator: "|")
+            guard signature != lastRouteSignature else { return }
+            lastRouteSignature = signature
+
+            registerRouteStyleIfNeeded()
+            let manager = mapView.getRouteManager()
+            guard let layer = manager.getRouteLayer(layerID: routeLayerID) else { return }
+            layer.clearAllRoutes()
+            guard coords.count >= 2 else { return }
+
+            let points = coords.map { MapPoint(longitude: $0.longitude, latitude: $0.latitude) }
+            let segment = RouteSegment(points: points, styleIndex: 0)
+            let options = RouteOptions(routeID: "route", styleID: routeStyleID, zOrder: 0)
+            options.segments = [segment]
+            let route = layer.addRoute(option: options)
+            route?.show()
         }
 
         private func markerImage() -> UIImage {
