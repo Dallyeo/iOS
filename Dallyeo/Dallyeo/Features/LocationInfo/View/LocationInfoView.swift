@@ -105,11 +105,11 @@ struct LocationInfoView: View {
                 onRoleSet?()
             }
             roleButton("경유", style: .tonal) {
-                routeDraft.addWaypoint(place, currentLocation: RouteDraft.currentLocationPlace())
+                routeDraft.addWaypoint(place, currentLocation: RouteDraft.currentLocationPlace(LocationProvider.shared.currentTuple))
                 onRoleSet?()
             }
             roleButton("도착", style: .filled) {
-                routeDraft.setDestination(place, currentLocation: RouteDraft.currentLocationPlace())
+                routeDraft.setDestination(place, currentLocation: RouteDraft.currentLocationPlace(LocationProvider.shared.currentTuple))
                 onRoleSet?()
             }
         }

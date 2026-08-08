@@ -34,17 +34,43 @@ struct RouteEditView: View {
                         .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 4)
                 )
 
-            // 하단: 지도 (바닥까지 꽉 차게)
-            // TODO: 거리 말풍선은 T MAP 경로 폴리라인과 함께 경로 위에 표시
+            // 하단: 지도 (바닥까지 꽉 차게) + T MAP 경로선 + 총거리 칩
             KakaoMapView(
                 userLocation: nil,
                 places: viewModel.markerPlaces,
-                showsPlaceMarkers: true
+                showsPlaceMarkers: true,
+                routePolyline: viewModel.routePolyline
             )
             .ignoresSafeArea(edges: .bottom)
+            .overlay(alignment: .top) {
+                if viewModel.markerPlaces.count >= 2 {
+                    distanceChip
+                        .padding(.top, 12)
+                }
+            }
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
+        // 지점 구성이 바뀔 때마다 T MAP 보행자 경로 재계산
+        .task(id: viewModel.routeSignature) {
+            await viewModel.recalculateRoute()
+        }
+    }
+
+    /// 총 거리 말풍선(칩) — T MAP 실거리(없으면 직선거리)
+    private var distanceChip: some View {
+        HStack(spacing: 6) {
+            if viewModel.isRouting {
+                ProgressView().scaleEffect(0.7)
+            }
+            Text(viewModel.totalDistanceText)
+                .font(AppFont.pretendard(14, .semibold))
+                .foregroundStyle(AppColor.white)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(AppColor.primary, in: Capsule())
+        .shadow(color: .black.opacity(0.15), radius: 3, y: 2)
     }
 
     // MARK: - 편집 패널
