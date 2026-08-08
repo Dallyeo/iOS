@@ -13,6 +13,8 @@ struct LocationInfoView: View {
     @Environment(RouteDraft.self) private var routeDraft
 
     @State private var viewModel: LocationInfoViewModel
+    /// 사진 전체화면 뷰어 시작 인덱스 (nil이면 닫힘)
+    @State private var photoViewerIndex: Int?
     var bottomSheetVisible: Bool = true
     /// 역할 설정 완료 → V07 경로수정뷰로
     var onRoleSet: (() -> Void)?
@@ -68,13 +70,29 @@ struct LocationInfoView: View {
 
     private var detailSheet: some View {
         ScrollView {
-            PlaceSummaryCard(data: viewModel.cardData)
-                .padding(.horizontal, 16)
-                .padding(.top, 20)
-                .padding(.bottom, 16)
+            PlaceSummaryCard(
+                data: viewModel.cardData,
+                onPhotoTap: { photoViewerIndex = $0 }
+            )
+            .padding(.horizontal, 16)
+            .padding(.top, 20)
+            .padding(.bottom, 16)
         }
         .background(AppColor.white)
         .safeAreaInset(edge: .bottom) { roleButtons }
+        // 사진 탭 → 전체화면 뷰어 (Notion V06: "꽉찬 화면으로 사진 보기")
+        .fullScreenCover(item: Binding(
+            get: { photoViewerIndex.map(PhotoIndex.init) },
+            set: { photoViewerIndex = $0?.value }
+        )) { item in
+            PhotoViewer(urls: viewModel.imageURLs, startIndex: item.value)
+        }
+    }
+
+    /// fullScreenCover(item:) 용 Identifiable 래퍼
+    private struct PhotoIndex: Identifiable {
+        let value: Int
+        var id: Int { value }
     }
 
     // MARK: - 출발 / 경유 / 도착 (각 70×40, radius 24, gap 10, 우측 정렬)

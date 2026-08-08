@@ -23,6 +23,8 @@ struct PlaceCardData {
 struct PlaceSummaryCard: View {
 
     let data: PlaceCardData
+    /// 사진 탭 콜백. 지정 시 사진이 탭 가능(전체화면 뷰어용). nil이면 사진은 표시만(카드 전체 탭이 우선).
+    var onPhotoTap: ((Int) -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -94,7 +96,14 @@ struct PlaceSummaryCard: View {
         if !data.imageURLs.isEmpty {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
-                    ForEach(data.imageURLs, id: \.self) { photo($0) }
+                    ForEach(Array(data.imageURLs.enumerated()), id: \.element) { index, urlString in
+                        if let onPhotoTap {
+                            Button { onPhotoTap(index) } label: { photo(urlString) }
+                                .buttonStyle(.plain)
+                        } else {
+                            photo(urlString)
+                        }
+                    }
                 }
             }
             .scrollClipDisabled()
