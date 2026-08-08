@@ -51,12 +51,13 @@ struct RouteEditView: View {
 
     private var editPanel: some View {
         VStack(spacing: 0) {
-            pointRow(name: viewModel.start?.name, placeholder: "출발지 설정",
+            pointRow(role: .start, name: viewModel.start?.name, placeholder: "출발지 설정",
                      trailing: .none, slot: .start)
             Divider()
 
             ForEach(viewModel.waypoints) { wp in
                 pointRow(
+                    role: .waypoint,
                     name: wp.name.isEmpty ? nil : wp.name,
                     placeholder: "경유지 설정",
                     trailing: .remove(wp),
@@ -66,26 +67,36 @@ struct RouteEditView: View {
             }
 
             // 도착지 행 + 경유지 추가(+)
-            pointRow(name: viewModel.destination?.name, placeholder: "도착지 설정",
+            pointRow(role: .destination, name: viewModel.destination?.name, placeholder: "도착지 설정",
                      trailing: .add, slot: .destination)
-            Divider()
 
-            HStack(spacing: 0) {
-                Button("취소") { dismiss() }
-                    .frame(maxWidth: .infinity)
-                    .foregroundStyle(AppColor.gray700)
-                Button("확인") {
-                    onConfirm?()
-                }
-                .frame(maxWidth: .infinity)
-                .foregroundStyle(viewModel.canConfirm ? AppColor.gray900 : AppColor.gray300)
-                .disabled(!viewModel.canConfirm)
+            // 취소 / 확인 (각 초록/회색 fill, radius 8)
+            HStack(spacing: 16) {
+                actionButton("취소", filled: AppColor.gray300, enabled: true) { dismiss() }
+                actionButton("확인", filled: viewModel.canConfirm ? AppColor.primary : AppColor.gray300,
+                             enabled: viewModel.canConfirm) { onConfirm?() }
             }
-            .font(.system(size: 16, weight: .semibold))
-            .padding(.vertical, 14)
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 14)
         }
         .background(AppColor.white)
     }
+
+    private func actionButton(_ title: String, filled: Color, enabled: Bool,
+                              action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(AppFont.pretendard(14, .medium))   // P_M_14
+                .foregroundStyle(AppColor.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 37)
+                .background(filled, in: RoundedRectangle(cornerRadius: 8))
+        }
+        .disabled(!enabled)
+    }
+
+    private enum PointRole { case start, waypoint, destination }
 
     private enum RowTrailing {
         case none
@@ -93,21 +104,29 @@ struct RouteEditView: View {
         case add
     }
 
-    private func pointRow(name: String?, placeholder: String,
+    private func pointRow(role: PointRole, name: String?, placeholder: String,
                           trailing: RowTrailing, slot: RouteDraft.EditSlot) -> some View {
-        ZStack {
+        let isFilled = name != nil
+        // 출발/도착 = SemiBold Gray900, 경유 = Medium Gray700, 미설정 = Gray500
+        let nameFont = role == .waypoint ? AppFont.pretendard(15, .medium) : AppFont.pretendard(15, .semibold)
+        let nameColor: Color = !isFilled ? AppColor.gray500
+            : (role == .waypoint ? AppColor.gray700 : AppColor.gray900)
+
+        return ZStack {
             // 지점명 (가운데 정렬) — 탭 시 검색으로 설정
             Text(name ?? placeholder)
-                .font(.system(size: 16))
-                .foregroundStyle(name == nil ? AppColor.gray500 : AppColor.gray900)
+                .font(nameFont)
+                .foregroundStyle(nameColor)
+                .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.horizontal, 44)
                 .contentShape(Rectangle())
                 .onTapGesture { onEditSlot?(slot) }
 
-            // 핸들(좌) + 액션(우)
+            // 순서 핸들(좌, 상하 chevron) + 액션(우)
             HStack {
-                Image(systemName: "line.3.horizontal")
-                    .font(.system(size: 16))
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(AppColor.gray500)
                 Spacer()
                 switch trailing {
@@ -132,6 +151,6 @@ struct RouteEditView: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 16)
+        .padding(.vertical, 15)
     }
 }
