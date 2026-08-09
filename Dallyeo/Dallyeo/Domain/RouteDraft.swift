@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import CoreLocation
 
 @MainActor
 @Observable
@@ -14,6 +15,12 @@ final class RouteDraft {
     var start: MapPlace?
     var waypoints: [MapPlace] = []   // 최대 maxWaypoints개
     var destination: MapPlace?
+
+    /// T MAP 보행자 경로 폴리라인. V07에서 계산해 여기 저장 → V08/V09가 이어받는다.
+    /// (ViewModel에만 두면 화면 전환 시 유실되므로 draft가 보관)
+    var routePolyline: [CLLocationCoordinate2D] = []
+    /// T MAP 실거리(m). 못 구하면 nil → 직선거리 폴백.
+    var routeMeters: Int?
 
     /// 현재 검색으로 채우려는 지점 슬롯 (V07 행 탭 → 검색 → 결과 선택 시 이 슬롯에 할당)
     var editingSlot: EditSlot?

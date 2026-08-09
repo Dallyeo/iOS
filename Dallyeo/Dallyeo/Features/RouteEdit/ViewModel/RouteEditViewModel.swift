@@ -86,9 +86,16 @@ final class RouteEditViewModel {
     // MARK: - T MAP 보행자 경로
 
     /// T MAP 도보경로 폴리라인 (지도 렌더용). 실패/미계산 시 빈 배열.
-    var routePolyline: [CLLocationCoordinate2D] = []
+    /// 저장소는 `draft` — V08/V09가 같은 경로를 이어받아야 하므로 ViewModel에 두지 않는다.
+    var routePolyline: [CLLocationCoordinate2D] {
+        get { draft.routePolyline }
+        set { draft.routePolyline = newValue }
+    }
     /// T MAP 실거리(m). 못 구하면 nil → 직선거리로 폴백.
-    var routeMeters: Int?
+    var routeMeters: Int? {
+        get { draft.routeMeters }
+        set { draft.routeMeters = newValue }
+    }
     var isRouting = false
 
     /// 유효 지점 좌표(빈 경유지 제외)

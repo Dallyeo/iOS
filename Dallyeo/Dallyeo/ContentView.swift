@@ -13,7 +13,8 @@ enum AppRoute: Hashable {
     case searchResult(query: String)  // V05
     case locationInfo(place: MapPlace) // V06
     case routeEdit                     // V07
-    case courseConfirm                 // V08
+    /// V08. `courseId`가 있으면 BE 추천 코스, nil이면 V07에서 만든 코스(RouteDraft)
+    case courseConfirm(courseId: String?)
     case running                       // V09
 }
 
@@ -68,18 +69,27 @@ struct ContentView: View {
         case .routeEdit:
             RouteEditView(
                 draft: routeDraft,
-                onConfirm: { path.append(.courseConfirm) },
+                onConfirm: { path.append(.courseConfirm(courseId: nil)) },
                 onEditSlot: { slot in
                     routeDraft.editingSlot = slot
                     path.append(.search)
                 }
             )
-        case .courseConfirm:
-            CourseConfirmView(
-                draft: routeDraft,
-                onEdit: { path.removeLast() },     // V07 경로수정으로 복귀
-                onStart: { path.append(.running) }
-            )
+        case .courseConfirm(let courseId):
+            if let courseId {
+                // 추천 코스 — 경로/지점 모두 BE에서 로드
+                CourseConfirmView(
+                    courseId: courseId,
+                    onEdit: { path.removeLast() },
+                    onStart: { path.append(.running) }
+                )
+            } else {
+                CourseConfirmView(
+                    draft: routeDraft,
+                    onEdit: { path.removeLast() },     // V07 경로수정으로 복귀
+                    onStart: { path.append(.running) }
+                )
+            }
         case .running:
             RunningView(
                 draft: routeDraft,
