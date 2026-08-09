@@ -22,13 +22,22 @@ struct PlaceCardData {
 
 struct PlaceSummaryCard: View {
 
+    /// 사진 영역 크기. 화면마다 다르다.
+    enum PhotoLayout {
+        /// V05 검색결과 행 — 190×100 여러 장 가로 스크롤, 간격 16 (Figma 542:944)
+        case list
+        /// V06 위치정보 — 370×127 카드 폭 꽉 참 (Figma 542:1012)
+        case detail
+
+        var photoWidth: CGFloat { self == .list ? 190 : 370 }
+        var photoHeight: CGFloat { self == .list ? 100 : 127 }
+        var spacing: CGFloat { self == .list ? 16 : 0 }
+    }
+
     let data: PlaceCardData
     /// 사진 탭 콜백. 지정 시 사진이 탭 가능(전체화면 뷰어용). nil이면 사진은 표시만(카드 전체 탭이 우선).
     var onPhotoTap: ((Int) -> Void)? = nil
-    /// 사진이 없을 때 빈 자리(hide_image 아이콘)를 그릴지.
-    /// V06 위치정보는 사진 영역이 항상 있어 true, V05 검색결과 리스트는 사진 영역 자체가 없어 false.
-    /// (Figma: V05_검색결과 542:925에는 사진 영역 없음 / V05_검색상세_empty 822:5140에 빈 자리 있음)
-    var showsPhotoPlaceholder: Bool = false
+    var photoLayout: PhotoLayout = .list
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -94,15 +103,14 @@ struct PlaceSummaryCard: View {
         }
     }
 
-    // 사진 가로 스크롤 (190×127, radius 8).
-    // 사진이 없으면 V06은 빈 자리를, V05 리스트는 아무것도 그리지 않는다.
+    // 사진 영역. 크기는 화면(photoLayout)에 따라 다르고, 없으면 빈 자리를 그린다.
     @ViewBuilder
     private var photoStrip: some View {
         if data.imageURLs.isEmpty {
-            if showsPhotoPlaceholder { photoPlaceholder }
+            photoPlaceholder
         } else {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
+                HStack(spacing: photoLayout.spacing) {
                     ForEach(Array(data.imageURLs.enumerated()), id: \.element) { index, urlString in
                         if let onPhotoTap {
                             Button { onPhotoTap(index) } label: { photo(urlString) }
@@ -117,11 +125,12 @@ struct PlaceSummaryCard: View {
         }
     }
 
-    /// 사진 없음 자리 (Figma 822:5140). 370×127 Gray/200 박스 + 24pt hide_image 아이콘(Gray/300).
+    /// 사진 없음 자리. 사진 한 장이 아니라 **카드 폭 전체(370)** 를 차지한다.
+    /// (Figma: V05 리스트 822:5193 370×100 / V06 상세 822:5140 370×127)
     private var photoPlaceholder: some View {
         RoundedRectangle(cornerRadius: 8)
             .fill(AppColor.gray200)
-            .frame(width: 370, height: 127)
+            .frame(width: 370, height: photoLayout.photoHeight)
             .overlay {
                 Image("ic_hide_image")
                     .renderingMode(.template)
@@ -134,7 +143,7 @@ struct PlaceSummaryCard: View {
     private func photo(_ urlString: String) -> some View {
         RoundedRectangle(cornerRadius: 8)
             .fill(AppColor.gray200)
-            .frame(width: 190, height: 127)
+            .frame(width: photoLayout.photoWidth, height: photoLayout.photoHeight)
             .overlay {
                 if let url = URL(string: urlString) {
                     AsyncImage(url: url) { image in

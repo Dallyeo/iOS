@@ -73,7 +73,7 @@ struct LocationInfoView: View {
             PlaceSummaryCard(
                 data: viewModel.cardData,
                 onPhotoTap: { photoViewerIndex = $0 },
-                showsPhotoPlaceholder: true
+                photoLayout: .detail
             )
             .padding(.horizontal, 16)
             .padding(.top, 20)

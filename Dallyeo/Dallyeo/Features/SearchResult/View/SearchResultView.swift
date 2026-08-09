@@ -12,6 +12,7 @@ struct SearchResultView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel: SearchResultViewModel
     @FocusState private var fieldFocused: Bool
+    @State private var sheetDetent: PresentationDetent = .medium
 
     /// 네비게이션 최상단일 때만 바텀시트 표시 (push된 화면 위 시트 충돌 방지)
     var bottomSheetVisible: Bool = true
@@ -40,7 +41,10 @@ struct SearchResultView: View {
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: .constant(bottomSheetVisible)) {
             resultSheet
-                .presentationDetents([.height(120), .medium, .large])
+                // 기본을 medium으로 연다. 최소(120pt)로 열면 카드가 거의 가려지고
+                // 남은 영역이 시트 드래그 영역과 겹쳐, 결과를 눌러도 선택이 아니라
+                // 시트 확장으로 먹힌다. Figma(542:925)도 절반쯤 열린 상태가 기본.
+                .presentationDetents([.height(120), .medium, .large], selection: $sheetDetent)
                 .presentationDragIndicator(.visible)
                 .presentationBackground(AppColor.white)
                 .presentationBackgroundInteraction(.enabled(upThrough: .large))
@@ -101,6 +105,33 @@ struct SearchResultView: View {
     // MARK: - 결과 바텀시트
 
     private var resultSheet: some View {
+        Group {
+            if viewModel.results.isEmpty {
+                noResultView
+            } else {
+                resultList
+            }
+        }
+        .background(AppColor.white)
+    }
+
+    /// 검색 결과 없음 (Figma 822:4998 V05_empty2)
+    private var noResultView: some View {
+        VStack(spacing: 15) {
+            Image("ic_no_result")
+                .renderingMode(.template)
+                .resizable()
+                .frame(width: 24, height: 24)
+                .foregroundStyle(AppColor.gray300)
+            Text("장소를 찾을 수 없어요")
+                .font(AppFont.pretendard(15, .medium))
+                .tracking(AppFont.tracking(-2, size: 15))
+                .foregroundStyle(AppColor.disabled)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var resultList: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 10) {
                 ForEach(Array(viewModel.results.enumerated()), id: \.element.id) { index, place in
