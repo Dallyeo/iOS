@@ -72,7 +72,8 @@ struct LocationInfoView: View {
         ScrollView {
             PlaceSummaryCard(
                 data: viewModel.cardData,
-                onPhotoTap: { photoViewerIndex = $0 }
+                onPhotoTap: { photoViewerIndex = $0 },
+                showsPhotoPlaceholder: true
             )
             .padding(.horizontal, 16)
             .padding(.top, 20)

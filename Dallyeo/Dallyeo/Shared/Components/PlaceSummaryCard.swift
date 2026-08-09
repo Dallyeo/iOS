@@ -25,6 +25,10 @@ struct PlaceSummaryCard: View {
     let data: PlaceCardData
     /// 사진 탭 콜백. 지정 시 사진이 탭 가능(전체화면 뷰어용). nil이면 사진은 표시만(카드 전체 탭이 우선).
     var onPhotoTap: ((Int) -> Void)? = nil
+    /// 사진이 없을 때 빈 자리(hide_image 아이콘)를 그릴지.
+    /// V06 위치정보는 사진 영역이 항상 있어 true, V05 검색결과 리스트는 사진 영역 자체가 없어 false.
+    /// (Figma: V05_검색결과 542:925에는 사진 영역 없음 / V05_검색상세_empty 822:5140에 빈 자리 있음)
+    var showsPhotoPlaceholder: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -90,10 +94,13 @@ struct PlaceSummaryCard: View {
         }
     }
 
-    // 사진 가로 스크롤 (190×127, radius 8). 없으면 생략 → 텍스트 카드 상태.
+    // 사진 가로 스크롤 (190×127, radius 8).
+    // 사진이 없으면 V06은 빈 자리를, V05 리스트는 아무것도 그리지 않는다.
     @ViewBuilder
     private var photoStrip: some View {
-        if !data.imageURLs.isEmpty {
+        if data.imageURLs.isEmpty {
+            if showsPhotoPlaceholder { photoPlaceholder }
+        } else {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(Array(data.imageURLs.enumerated()), id: \.element) { index, urlString in
@@ -108,6 +115,20 @@ struct PlaceSummaryCard: View {
             }
             .scrollClipDisabled()
         }
+    }
+
+    /// 사진 없음 자리 (Figma 822:5140). 370×127 Gray/200 박스 + 24pt hide_image 아이콘(Gray/300).
+    private var photoPlaceholder: some View {
+        RoundedRectangle(cornerRadius: 8)
+            .fill(AppColor.gray200)
+            .frame(width: 370, height: 127)
+            .overlay {
+                Image("ic_hide_image")
+                    .renderingMode(.template)
+                    .resizable()
+                    .frame(width: 24, height: 24)
+                    .foregroundStyle(AppColor.gray300)
+            }
     }
 
     private func photo(_ urlString: String) -> some View {
