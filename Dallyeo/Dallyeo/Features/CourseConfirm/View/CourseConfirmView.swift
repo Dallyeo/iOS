@@ -48,6 +48,7 @@ struct CourseConfirmView: View {
                 userLocation: nil,
                 places: viewModel.nearbyPlaces,
                 showsPlaceMarkers: true,
+                placeMarkerRole: .nearby,
                 routePolyline: viewModel.routePolyline,
                 markers: viewModel.mapMarkers,
                 // 패널 높이를 재기 전에는 맞춤을 미룬다 (카메라 맞춤은 1회성이라 선반영 필요)

@@ -15,6 +15,17 @@ struct KakaoMapView: UIViewRepresentable {
     var places: [MapPlace]
     /// 마커 표시 여부 (V05 검색결과 등에서 사용). 기본은 표시 안 함(V03).
     var showsPlaceMarkers: Bool = false
+    /// place 마커를 어떤 의미로 그릴지. 디자인시스템에서 마커는 역할별로 다르다:
+    ///  - 검색/선택한 위치 → `pin`(초록 물방울)
+    ///  - 경로 주변 POI    → 카테고리별(관광지=분홍, 편의시설=하늘색)
+    var placeMarkerRole: PlaceMarkerRole = .searched
+
+    enum PlaceMarkerRole {
+        /// 사용자가 검색하거나 선택한 위치 (V05 검색결과 / V06 위치정보)
+        case searched
+        /// 코스 주변에서 찾아 준 장소 (V08 코스확인)
+        case nearby
+    }
     /// 현위치를 따라 카메라 계속 이동 (V09 러닝). 기본은 최초 1회만.
     var followsUser: Bool = false
     /// 경로선(폴리라인) 좌표 — V07/V08 도보경로. 비어있으면 미표시.
@@ -42,6 +53,7 @@ struct KakaoMapView: UIViewRepresentable {
         context.coordinator.syncViewRect(container.bounds.size)
         // 영역 맞춤을 쓰면 마커별 카메라 이동은 하지 않는다 (서로 밀어내는 것 방지)
         context.coordinator.usesFitBounds = !fitCoordinates.isEmpty
+        context.coordinator.placeMarkerRole = placeMarkerRole
         context.coordinator.updateLocation(userLocation, follow: followsUser)
         if !markers.isEmpty {
             context.coordinator.updateMarkers(markers)
@@ -84,6 +96,8 @@ extension KakaoMapView {
         private var lastFitKey: String?
         /// true면 render*가 카메라를 옮기지 않고 `updateFitBounds`에 맡긴다.
         var usesFitBounds = false
+        /// place 마커 역할 (검색/선택 위치 vs 코스 주변 POI)
+        var placeMarkerRole: PlaceMarkerRole = .searched
 
         private let poiLayerID = "placeLayer"
         private let poiStyleID = "placeMarker"
@@ -176,11 +190,13 @@ extension KakaoMapView {
         private func registerMarkerStyle() {
             guard let mapView else { return }
             let manager = mapView.getLabelManager()
-            // 장소 마커는 서로/코스마커와 경쟁시켜 겹칠 때 하나만 그린다.
+            // 장소 마커끼리만 경쟁시켜 겹칠 때 하나만 그린다.
             // (코스 근방 검색은 반경이 겹쳐 마커가 수십 개씩 쌓인다)
+            // `.upperSame`을 쓰면 상위 레이어인 코스 마커에도 밀려서, 장소가 출발/도착
+            // 부근에 몰려 있을 때 전부 사라진다. 의미가 다른 마커끼리는 경쟁시키지 않는다.
             _ = manager.addLabelLayer(option: LabelLayerOptions(
                 layerID: poiLayerID,
-                competitionType: .upperSame,
+                competitionType: .same,
                 competitionUnit: .symbolFirst,
                 orderType: .rank,
                 zOrder: 10_001
@@ -216,8 +232,20 @@ extension KakaoMapView {
             UIImage(named: name) ?? markerImage()
         }
 
-        private func placeStyleID(for category: PlaceCategory) -> String {
-            category == .restaurant ? "m_place_restaurant" : "m_place_attraction"
+        /// 역할에 따라 마커 스타일을 고른다.
+        /// 초록 `pin`은 "검색/선택한 위치"라는 뜻이라 주변 POI에 쓰면 의미가 어긋난다.
+        private func placeStyleID(for category: PlaceCategory, role: PlaceMarkerRole) -> String {
+            switch role {
+            case .searched:
+                return poiStyleID                    // marker_pin (초록)
+            case .nearby:
+                switch category {
+                case .attraction: return "m_place_attraction"   // marker_attraction (분홍)
+                // 음식점 전용 마커는 디자인에 없다. 현재 V08은 음식점을 조회하지 않으므로
+                // 이 분기는 타지 않는다. 마커가 생기면 여기에 연결한다.
+                case .restaurant: return "m_place_attraction"
+                }
+            }
         }
 
         private func addPoiStyle(_ manager: LabelManager, styleID: String, image: UIImage,
@@ -322,7 +350,7 @@ extension KakaoMapView {
             layer.clearAllItems()
             // 앞쪽(가까운) 장소일수록 rank를 높여 경쟁에서 살아남게 한다.
             for (index, place) in places.enumerated() {
-                let options = PoiOptions(styleID: placeStyleID(for: place.category))
+                let options = PoiOptions(styleID: placeStyleID(for: place.category, role: placeMarkerRole))
                 options.rank = Int(max(0, places.count - index))
                 let point = MapPoint(longitude: place.longitude, latitude: place.latitude)
                 let poi = layer.addPoi(option: options, at: point)

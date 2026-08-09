@@ -125,8 +125,15 @@ final class CourseConfirmViewModel {
 
     /// 코스 근방 검색 반경(m). 스펙 "코스 근방 1km".
     private static let nearbyRadiusMeters = 1000
-    /// BE 유효 카테고리(실측). ATTRACTION/CONVENIENCE 등은 400을 반환하므로 쓰지 않는다.
-    private static let nearbyCategories = ["TOUR", "CULTURE", "RESTAURANT", "CAFE"]
+    /// 코스 주변에 표시할 카테고리.
+    ///
+    /// 스펙(V08)은 "코스 근방 1km에 있는 **편의시설과 관광지**"라 음식점은 대상이 아니다.
+    /// 디자인시스템에도 음식점 마커가 없다(관광지=분홍, 편의시설=하늘색, 초록 pin은
+    /// "검색/선택한 위치" 전용). 편의시설은 BE에 카테고리 자체가 없어 현재는 관광지만.
+    ///
+    /// BE 유효 카테고리(실측): TOUR CULTURE FESTIVAL SHOPPING CAFE RESTAURANT STAY
+    /// (ATTRACTION/CONVENIENCE/TOILET 등은 400)
+    private static let nearbyCategories = ["TOUR", "CULTURE", "FESTIVAL"]
     /// 샘플 지점 최대 개수. (지점당 카테고리 4회 호출 → 과다 요청 방지)
     private static let maxSamples = 5
     /// 지도에 찍을 주변 마커 상한. 넘으면 지도가 마커로 뒤덮인다.
