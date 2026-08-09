@@ -33,26 +33,42 @@ final class RunningViewModel: NSObject {
     var userLocation: CLLocationCoordinate2D?
     var traveledPath: [CLLocationCoordinate2D] = []
 
-    /// 경로 이탈(1km 초과) 알림
-    var showDeviationAlert: Bool = false
+    /// 현재 떠 있는 알럿. 디자인은 일시정지(569:673) / 종료 확인(569:1142) 2종.
+    /// 경로 이탈도 스펙상 "종료할 것인지 묻는다"라 종료 확인을 재사용한다.
+    enum ActiveAlert: Identifiable {
+        case paused
+        case finishConfirm
+        case deviated
+
+        var id: Int {
+            switch self {
+            case .paused: 0
+            case .finishConfirm: 1
+            case .deviated: 2
+            }
+        }
+    }
+
+    var activeAlert: ActiveAlert?
 
     // MARK: - 경로 지점
 
+    /// 진행할 코스 (V08에서 확정된 것을 그대로 받는다)
+    let course: RunCourse
+
     /// 남은 목표 지점들(경유지→도착지, 유효 좌표만)
-    private let targets: [MapPlace]
+    private let targets: [CoursePoint]
     private var nextTargetIndex: Int = 0
 
-    /// 지도 마커/폴리라인용 전체 경로 지점
-    let routePlaces: [MapPlace]
-
-    var nextTarget: MapPlace? {
+    var nextTarget: CoursePoint? {
         nextTargetIndex < targets.count ? targets[nextTargetIndex] : nil
     }
 
     /// 다음 지점 라벨 (경유지 / 도착지)
     var nextTargetLabel: String {
         guard let next = nextTarget else { return "" }
-        return next.id == targets.last?.id ? "도착지" : "경유지"
+        if case .destination = next.role { return "도착지" }
+        return "경유지"
     }
 
     /// 다음 지점까지 남은 거리(m)
@@ -68,12 +84,9 @@ final class RunningViewModel: NSObject {
         return Double(nextTargetIndex) / Double(targets.count)
     }
 
-    /// 코스 총 직선 거리(m) — 출발→경유→도착
+    /// 코스 총 거리(m). T MAP/BE 실거리를 그대로 쓴다 (직선거리 재계산 안 함)
     private var totalCourseMeters: Double {
-        guard routePlaces.count >= 2 else { return 0 }
-        return (1..<routePlaces.count).reduce(0.0) { sum, i in
-            sum + Self.distance(routePlaces[i - 1].coordinate, routePlaces[i].coordinate)
-        }
+        Double(course.totalMeters)
     }
 
     /// 진행률(0~1) — 이동 거리 기준. 하단 진행 바 화살표 위치용
@@ -94,12 +107,12 @@ final class RunningViewModel: NSObject {
 
     // MARK: - Init
 
-    init(draft: RouteDraft) {
-        let ordered = (draft.waypoints + [draft.destination].compactMap { $0 })
-            .filter { $0.latitude != 0 && $0.longitude != 0 }
-        self.targets = ordered
-        self.routePlaces = ([draft.start].compactMap { $0 } + ordered)
-            .filter { $0.latitude != 0 && $0.longitude != 0 }
+    init(course: RunCourse) {
+        self.course = course
+        // 출발지는 이미 지나온 지점이므로 목표에서 제외
+        self.targets = course.points
+            .filter { if case .start = $0.role { false } else { true } }
+            .filter(\.hasCoordinate)
         super.init()
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
@@ -152,12 +165,23 @@ final class RunningViewModel: NSObject {
         phase = .paused
         locationManager.stopUpdatingLocation()
         currentPaceSecPerKm = 0
+        activeAlert = .paused
     }
 
     func resume() {
         guard phase == .paused else { return }
         phase = .running
         locationManager.startUpdatingLocation()
+        activeAlert = nil
+    }
+
+    /// 하단 "끝내기" — 바로 끝내지 않고 확인을 받는다 (Figma 569:1142)
+    func requestFinish() {
+        activeAlert = .finishConfirm
+    }
+
+    func dismissAlert() {
+        activeAlert = nil
     }
 
     func finish() {
@@ -201,11 +225,17 @@ final class RunningViewModel: NSObject {
         }
     }
 
+    /// 코스 경로선에서 1km 초과로 벗어나면 종료 여부를 묻는다.
+    /// 지점이 아니라 **폴리라인 전체**와의 최단 거리로 판정한다 (지점 기준이면 지점 사이 구간에서 오탐).
     private func checkDeviation() {
-        guard let loc = userLocation, !routePlaces.isEmpty, !showDeviationAlert else { return }
-        let nearest = routePlaces.map { Self.distance(loc, $0.coordinate) }.min() ?? 0
+        guard let loc = userLocation, activeAlert == nil else { return }
+        let reference = course.polyline.isEmpty
+            ? course.points.filter(\.hasCoordinate).map(\.coordinate)
+            : course.polyline
+        guard !reference.isEmpty else { return }
+        let nearest = reference.map { Self.distance(loc, $0) }.min() ?? 0
         if nearest > deviationThreshold {
-            showDeviationAlert = true
+            activeAlert = .deviated
         }
     }
 

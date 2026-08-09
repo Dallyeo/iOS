@@ -2,7 +2,9 @@
 //  RunningView.swift
 //  Dallyeo
 //
-//  V09 코스진행뷰 — 지도(경로+현위치) + 진행지표 + 카운트다운
+//  V09 코스진행뷰 — 지도(코스+현위치) + 다음 지점 안내 + 진행 지표.
+//  Figma 609:603 기준. 상단 턴바이턴 방향 안내(화살표/"우회전")는 회의 결정으로 MVP 제외,
+//  남은 거리·다음 지점명만 표시한다.
 //
 
 import SwiftUI
@@ -14,27 +16,42 @@ struct RunningView: View {
     /// 종료 시 결과 전달 (→ 웹 V10, runCompleted 이벤트는 후속)
     var onFinish: ((RunResult) -> Void)?
 
-    init(draft: RouteDraft, onFinish: ((RunResult) -> Void)? = nil) {
-        _viewModel = State(initialValue: RunningViewModel(draft: draft))
+    init(course: RunCourse, onFinish: ((RunResult) -> Void)? = nil) {
+        _viewModel = State(initialValue: RunningViewModel(course: course))
         self.onFinish = onFinish
     }
 
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
-                nextTargetBar
+                nextTargetBanner
                 KakaoMapView(
                     userLocation: viewModel.userLocation,
-                    places: viewModel.routePlaces,
-                    showsPlaceMarkers: true,
-                    followsUser: true
+                    places: [],
+                    followsUser: true,
+                    routePolyline: viewModel.course.polyline,
+                    markers: viewModel.course.mapMarkers
                 )
-                progressBar
-                bottomPanel
+                RunningMetricsPanel(
+                    elapsedText: formatTime(viewModel.elapsedSec),
+                    paceText: formatPace(viewModel.currentPaceSecPerKm),
+                    caloriesText: "\(viewModel.calories)",
+                    progress: viewModel.progressFraction,
+                    isPaused: viewModel.phase == .paused,
+                    onFinish: { viewModel.requestFinish() },
+                    onTogglePause: {
+                        viewModel.phase == .paused ? viewModel.resume() : viewModel.pause()
+                    }
+                )
             }
+            .ignoresSafeArea(edges: .bottom)
 
             if viewModel.phase == .countdown {
                 countdownOverlay
+            }
+
+            if let alert = viewModel.activeAlert {
+                alertView(for: alert)
             }
         }
         .navigationBarBackButtonHidden(true)
@@ -46,122 +63,55 @@ struct RunningView: View {
             }
             viewModel.start()
         }
-        .alert("경로를 벗어났어요", isPresented: $viewModel.showDeviationAlert) {
-            Button("계속하기", role: .cancel) {}
-            Button("종료", role: .destructive) { viewModel.finish() }
-        } message: {
-            Text("코스에서 1km 이상 벗어났습니다. 계속 진행할까요?")
-        }
-    }
-
-    // MARK: - 진행 바 (달린 만큼 화살표 이동)
-
-    private var progressBar: some View {
-        GeometryReader { geo in
-            let w = geo.size.width
-            let markerW: CGFloat = 26
-            let x = max(0, min(w - markerW, w * viewModel.progressFraction - markerW / 2))
-            ZStack(alignment: .topLeading) {
-                // 지도/패널 경계에 붙는 연한 초록 라인 (화살표보다 옅게)
-                Rectangle()
-                    .fill(AppColor.primary.opacity(0.4))
-                    .frame(height: 5)
-                // 라인 위 초록 화살표 (달린 만큼 좌→우 이동)
-                Image(systemName: "location.north.fill")
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(AppColor.primary)
-                    .frame(width: markerW)
-                    .offset(x: x, y: -4)
-                    .animation(.linear(duration: 0.3), value: viewModel.progressFraction)
-            }
-        }
-        .frame(height: 24)
-        .background(AppColor.white)
     }
 
     // MARK: - 상단 다음 지점 안내
 
-    private var nextTargetBar: some View {
+    /// Figma 609:616 중 방향(아이콘·"우회전") 제외. 남은 거리 + 다음 지점명만.
+    private var nextTargetBanner: some View {
         HStack(spacing: 16) {
-            VStack(spacing: 4) {
-                Image(systemName: "arrow.up.circle")
-                    .font(.system(size: 30, weight: .regular))
-                    .foregroundStyle(AppColor.gray900)
-                Text(viewModel.nextTargetLabel)
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(AppColor.gray900)
-            }
-
-            Divider().frame(height: 44)
-
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text(formatDistance(viewModel.remainingToNextMeters))
-                    .font(.system(size: 30, weight: .bold))
-                    .foregroundStyle(AppColor.gray900)
-                if let name = viewModel.nextTarget?.name {
-                    Text(name)
-                        .font(.system(size: 14))
+                    .font(AppFont.pretendard(30, .bold))
+                    .foregroundStyle(AppColor.black)
+                if let name = viewModel.nextTarget?.name, !name.isEmpty {
+                    Text("\(name) 방면")
+                        .font(AppFont.pretendard(15, .medium))
+                        .tracking(AppFont.tracking(-2, size: 15))
                         .foregroundStyle(AppColor.gray500)
                 }
             }
-            Spacer()
+            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
+        .padding(.horizontal, 24)
+        .padding(.bottom, 16)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(AppColor.white)
     }
 
-    // MARK: - 하단 지표 + 버튼
+    // MARK: - 알럿
 
-    private var bottomPanel: some View {
-        VStack(spacing: 16) {
-            HStack(spacing: 0) {
-                metric(formatTime(viewModel.elapsedSec), "진행 시간")
-                Divider().frame(height: 36)
-                metric(formatPace(viewModel.currentPaceSecPerKm), "현재 페이스")
-                Divider().frame(height: 36)
-                metric("\(viewModel.calories)", "칼로리")
-            }
-
-            HStack(spacing: 0) {
-                Button { viewModel.finish() } label: {
-                    Text("끝내기")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(AppColor.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 18)
-                }
-                Rectangle()
-                    .fill(AppColor.white.opacity(0.5))
-                    .frame(width: 1, height: 24)
-                Button {
-                    viewModel.phase == .paused ? viewModel.resume() : viewModel.pause()
-                } label: {
-                    Text(viewModel.phase == .paused ? "재개" : "일시정지")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(AppColor.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 18)
-                }
-            }
-            .background(AppColor.primary, in: RoundedRectangle(cornerRadius: 16))
+    @ViewBuilder
+    private func alertView(for alert: RunningViewModel.ActiveAlert) -> some View {
+        switch alert {
+        case .paused:
+            DallyeoAlert(
+                title: "일시정지했어요.",
+                message: "이어서 뛰려면 재개를 눌러주세요.",
+                secondaryTitle: "끝내기",
+                primaryTitle: "재개",
+                onSecondary: { viewModel.finish() },
+                onPrimary: { viewModel.resume() }
+            )
+        case .finishConfirm, .deviated:
+            DallyeoAlert(
+                title: "러닝을 그만두시겠어요?",
+                secondaryTitle: "취소",
+                primaryTitle: "확인",
+                onSecondary: { viewModel.dismissAlert() },
+                onPrimary: { viewModel.finish() }
+            )
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 16)
-        .padding(.bottom, 12)
-        .background(AppColor.white)
-    }
-
-    private func metric(_ value: String, _ label: String) -> some View {
-        VStack(spacing: 4) {
-            Text(value)
-                .font(.system(size: 24, weight: .bold))
-                .foregroundStyle(AppColor.gray900)
-            Text(label)
-                .font(.system(size: 14))
-                .foregroundStyle(AppColor.gray500)
-        }
-        .frame(maxWidth: .infinity)
     }
 
     // MARK: - 카운트다운
@@ -170,8 +120,8 @@ struct RunningView: View {
         ZStack {
             Color.black.opacity(0.6).ignoresSafeArea()
             Text("\(viewModel.countdownValue)")
-                .font(.system(size: 96, weight: .bold))
-                .foregroundStyle(.white)
+                .font(AppFont.pretendard(96, .bold))
+                .foregroundStyle(AppColor.white)
                 .contentTransition(.numericText())
                 .animation(.snappy, value: viewModel.countdownValue)
         }
@@ -180,7 +130,7 @@ struct RunningView: View {
     // MARK: - 포맷
 
     private func formatDistance(_ meters: Double) -> String {
-        meters < 1000 ? "\(Int(meters))m" : String(format: "%.1fkm", meters / 1000)
+        meters < 1000 ? "\(Int(meters))m" : DistanceFormat.km(meters: meters)
     }
 
     private func formatTime(_ sec: Int) -> String {

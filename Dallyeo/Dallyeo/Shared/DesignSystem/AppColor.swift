@@ -25,6 +25,7 @@ enum AppColor {
     static let gray300 = Color(hex: "#CCCCCC")  // 썸네일 플레이스홀더 (변경 DFDFDF→CCCCCC)
     static let gray400 = Color(hex: "#929292")  // 경유지명 등 약한 보조 텍스트
     static let gray500 = Color(hex: "#838383")  // 보조 텍스트 / 미선택
+    static let gray600 = Color(hex: "#606060")  // 알럿 부제 (gray700과 2/255 차이 — 통합 여지 있음)
     static let gray700 = Color(hex: "#5E5E5E")  // 선택 텍스트 / 총거리
     static let gray750 = Color(hex: "#585858")  // 코스 지점명 (출발·도착)
     static let gray900 = Color(hex: "#2B2B2B")  // 본문 텍스트

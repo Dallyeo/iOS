@@ -22,6 +22,8 @@ struct ContentView: View {
 
     @State private var path: [AppRoute] = []
     @State private var routeDraft = RouteDraft()
+    /// V08에서 확정된 코스. V09가 이걸 그대로 받아 진행한다.
+    @State private var runningCourse: RunCourse?
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -81,23 +83,31 @@ struct ContentView: View {
                 CourseConfirmView(
                     courseId: courseId,
                     onEdit: { path.removeLast() },
-                    onStart: { path.append(.running) }
+                    onStart: { course in
+                        runningCourse = course
+                        path.append(.running)
+                    }
                 )
             } else {
                 CourseConfirmView(
                     draft: routeDraft,
                     onEdit: { path.removeLast() },     // V07 경로수정으로 복귀
-                    onStart: { path.append(.running) }
+                    onStart: { course in
+                        runningCourse = course
+                        path.append(.running)
+                    }
                 )
             }
         case .running:
-            RunningView(
-                draft: routeDraft,
-                onFinish: { _ in
-                    // TODO: 웹 V10으로 runCompleted 이벤트. 현재는 지도까지 pop
-                    path.removeAll()
-                }
-            )
+            if let runningCourse {
+                RunningView(
+                    course: runningCourse,
+                    onFinish: { _ in
+                        // TODO: 웹 V10으로 runCompleted 이벤트. 현재는 지도까지 pop
+                        path.removeAll()
+                    }
+                )
+            }
         }
     }
 

@@ -18,13 +18,14 @@ struct CourseConfirmView: View {
     @State private var safeAreaTop: CGFloat = 0
     /// "수정" → V07 경로수정으로 복귀
     var onEdit: (() -> Void)?
-    /// "러닝 시작하기" → V09 코스진행 (카운트다운은 V09에서)
-    var onStart: (() -> Void)?
+    /// "러닝 시작하기" → V09 코스진행 (카운트다운은 V09에서).
+    /// 확정된 코스를 그대로 넘겨 V09가 다시 만들지 않게 한다.
+    var onStart: ((RunCourse) -> Void)?
 
     /// V07에서 만든 코스로 진입
     init(draft: RouteDraft,
          onEdit: (() -> Void)? = nil,
-         onStart: (() -> Void)? = nil) {
+         onStart: ((RunCourse) -> Void)? = nil) {
         _viewModel = State(initialValue: CourseConfirmViewModel(draft: draft))
         self.onEdit = onEdit
         self.onStart = onStart
@@ -33,7 +34,7 @@ struct CourseConfirmView: View {
     /// 추천 코스(BE)로 진입
     init(courseId: String,
          onEdit: (() -> Void)? = nil,
-         onStart: (() -> Void)? = nil) {
+         onStart: ((RunCourse) -> Void)? = nil) {
         _viewModel = State(initialValue: CourseConfirmViewModel(courseId: courseId))
         self.onEdit = onEdit
         self.onStart = onStart
@@ -121,7 +122,7 @@ struct CourseConfirmView: View {
     }
 
     private var startButton: some View {
-        Button { onStart?() } label: {
+        Button { if let course = viewModel.course { onStart?(course) } } label: {
             Text("러닝 시작하기")
                 .font(AppFont.pretendard(17, .semibold))
                 .foregroundStyle(AppColor.white)

@@ -69,3 +69,22 @@ V03 관련 프레임: V03_지도부1, V03_지도부2, V03_지도부3
 
 ### 코드 생성 계획
 → `aidlc-docs/construction/plans/v08-course-confirm-code-generation-plan.md` 참조
+
+---
+
+## 2026-08-09 (2) — 사용자 요청
+
+> V09 시작하기 전 푸시해야해?
+> 나중에 푸시할게 머지하고 브랜치 따서 하자
+
+### 선행 조치
+- `feat/v08-hifi` → `main` (V08 코스확인 HiFi + BE 연동)
+- `feat/v05-photo` → `main` (V05/V06 사진 영역 + 결과 없음 화면)
+- 신규 브랜치 `feat/v09-hifi`. origin 푸시는 사용자가 나중에 일괄 수행 예정(7커밋 대기)
+
+### Figma V09 확보 (Dev Mode MCP)
+- `609:603` V09_진행중 / `609:746` V09_진행중_임박 (UI 동일, 지도 상태만 다름)
+- `569:1142` 진행중알럿_1 (종료 확인) / `569:673` 진행중알럿_2 (일시정지)
+
+### 코드 생성 계획
+→ `aidlc-docs/construction/plans/v09-running-code-generation-plan.md` 참조
