@@ -20,6 +20,9 @@ struct CourseSummaryCard: View {
     private let badgeColumnWidth: CGFloat = 26
     private let nameColumnWidth: CGFloat = 200
     private let columnSpacing: CGFloat = 15
+    /// 출발/도착 점 지름 (Figma 565:838 벡터의 끝 원 r=2.67)
+    private let connectorDotSize: CGFloat = 5.33
+    private let connectorLineWidth: CGFloat = 1
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -65,19 +68,24 @@ struct CourseSummaryCard: View {
 
     private var pointList: some View {
         HStack(alignment: .top, spacing: columnSpacing) {
-            // 번호열 — 출발/도착 행은 빈칸
+            // 번호열 — 세로 연결선 위에 경유지 배지, 출발/도착은 선 끝의 점
             VStack(spacing: rowSpacing) {
                 ForEach(points) { point in
                     Group {
                         if case .waypoint(let n) = point.role {
                             WaypointNumberBadge(number: n)
                         } else {
-                            Color.clear
+                            Circle()
+                                .fill(AppColor.courseConnector)
+                                .frame(width: connectorDotSize, height: connectorDotSize)
                         }
                     }
                     .frame(width: badgeColumnWidth, height: rowHeight)
                 }
             }
+            // 배경으로 깔아야 선이 열 높이에 맞춰진다.
+            // (ZStack에 넣으면 Rectangle이 고유 높이가 없어 무한정 늘어난다)
+            .background(alignment: .center) { connectorLine }
             .frame(width: badgeColumnWidth)
 
             // 이름열 — 출발/도착은 진하게, 경유는 흐리게
@@ -90,6 +98,17 @@ struct CourseSummaryCard: View {
             .frame(width: nameColumnWidth)
         }
         .frame(maxWidth: .infinity)   // 카드 안에서 가운데 정렬
+    }
+
+    /// 첫 행 중심 ~ 마지막 행 중심을 잇는 세로선. 경유지 배지 뒤로 지나간다.
+    @ViewBuilder
+    private var connectorLine: some View {
+        if points.count > 1 {
+            Rectangle()
+                .fill(AppColor.courseConnector)
+                .frame(width: connectorLineWidth)
+                .padding(.vertical, rowHeight / 2)
+        }
     }
 
     @ViewBuilder

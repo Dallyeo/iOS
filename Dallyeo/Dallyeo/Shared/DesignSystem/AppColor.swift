@@ -33,6 +33,9 @@ enum AppColor {
     /// V08 프레임은 Gray/300을 #DFDFDF로 렌더 → 화면 실물 기준으로 분리.
     static let grabber = Color(hex: "#DFDFDF")
 
+    /// 코스 지점 리스트의 세로 연결선 및 출발/도착 점 (V08 565:838)
+    static let courseConnector = Color(hex: "#E9E9E9")
+
     // MARK: - 기타
     static let disabled = Color(hex: "#B8B8B8")
     static let red = Color(hex: "#FF383C")
