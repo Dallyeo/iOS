@@ -19,8 +19,15 @@ struct KakaoMapView: UIViewRepresentable {
     var followsUser: Bool = false
     /// 경로선(폴리라인) 좌표 — V07/V08 도보경로. 비어있으면 미표시.
     var routePolyline: [CLLocationCoordinate2D] = []
-    /// 종류별 마커 (출발/경유/도착/현재위치). 지정 시 place 마커 대신 이걸 표시.
+    /// 종류별 마커 (출발/경유/도착/현재위치). place 마커와 별도 레이어라 동시 표시된다.
     var markers: [MapMarker] = []
+    /// 지정 시 이 좌표들이 모두 보이도록 카메라를 최초 1회 맞춘다 (V08 코스 전체 보기).
+    /// 비어 있으면 기존 동작(첫 마커 기준 고정 줌) 유지.
+    var fitCoordinates: [CLLocationCoordinate2D] = []
+    /// 지도 하단이 바텀시트에 가려지는 높이(pt). 영역 맞춤 시 그만큼 보정한다.
+    var fitBottomInset: CGFloat = 0
+    /// 지도 상단이 상태바/다이나믹 아일랜드에 가려지는 높이(pt).
+    var fitTopInset: CGFloat = 0
 
     func makeUIView(context: Context) -> KMViewContainer {
         let bounds = UIApplication.shared.connectedScenes
@@ -33,13 +40,19 @@ struct KakaoMapView: UIViewRepresentable {
 
     func updateUIView(_ container: KMViewContainer, context: Context) {
         context.coordinator.syncViewRect(container.bounds.size)
+        // 영역 맞춤을 쓰면 마커별 카메라 이동은 하지 않는다 (서로 밀어내는 것 방지)
+        context.coordinator.usesFitBounds = !fitCoordinates.isEmpty
         context.coordinator.updateLocation(userLocation, follow: followsUser)
         if !markers.isEmpty {
             context.coordinator.updateMarkers(markers)
-        } else if showsPlaceMarkers {
+        }
+        if showsPlaceMarkers {
             context.coordinator.updatePlaces(places)
         }
         context.coordinator.updateRoute(routePolyline)
+        context.coordinator.updateFitBounds(fitCoordinates,
+                                            topInset: fitTopInset,
+                                            bottomInset: fitBottomInset)
     }
 
     func makeCoordinator() -> Coordinator {
@@ -62,10 +75,20 @@ extension KakaoMapView {
         private var pendingMarkers: [MapMarker]?
         private var pendingLocation: CLLocationCoordinate2D?
         private var pendingRoute: [CLLocationCoordinate2D]?
+        private var pendingFit: [CLLocationCoordinate2D]?
+        private var pendingFitInset: CGFloat = 0
+        private var pendingFitTopInset: CGFloat = 0
         private var didCenterOnUser = false
+        /// 마지막으로 맞춘 (좌표 집합 + 하단 가림 높이). 값이 바뀌면 다시 맞춘다.
+        /// 카드 내용이 로드되며 패널 높이가 커지므로 1회성으로 두면 첫(작은) 높이에 갇힌다.
+        private var lastFitKey: String?
+        /// true면 render*가 카메라를 옮기지 않고 `updateFitBounds`에 맡긴다.
+        var usesFitBounds = false
 
         private let poiLayerID = "placeLayer"
         private let poiStyleID = "placeMarker"
+        /// 출발/경유/도착 마커 전용 레이어. place 마커와 분리해야 둘이 서로를 지우지 않는다.
+        private let typedLayerID = "typedLayer"
 
         // 경로선
         private let routeLayerID = "routeLayer"
@@ -104,8 +127,13 @@ extension KakaoMapView {
             // 준비 전 보류된 데이터 반영
             if let pendingLocation { updateLocation(pendingLocation) }
             if let pendingMarkers { renderTypedMarkers(pendingMarkers) }
-            else if let pendingPlaces { renderMarkers(pendingPlaces) }
+            if let pendingPlaces { renderMarkers(pendingPlaces) }
             if let pendingRoute { renderRoute(pendingRoute) }
+            if let pendingFit {
+                updateFitBounds(pendingFit,
+                                topInset: pendingFitTopInset,
+                                bottomInset: pendingFitInset)
+            }
         }
 
         func addViewFailed(_ viewName: String, viewInfoName: String) {
@@ -148,14 +176,23 @@ extension KakaoMapView {
         private func registerMarkerStyle() {
             guard let mapView else { return }
             let manager = mapView.getLabelManager()
-            let layerOption = LabelLayerOptions(
+            // 장소 마커는 서로/코스마커와 경쟁시켜 겹칠 때 하나만 그린다.
+            // (코스 근방 검색은 반경이 겹쳐 마커가 수십 개씩 쌓인다)
+            _ = manager.addLabelLayer(option: LabelLayerOptions(
                 layerID: poiLayerID,
-                competitionType: .none,
+                competitionType: .upperSame,
                 competitionUnit: .symbolFirst,
                 orderType: .rank,
                 zOrder: 10_001
-            )
-            _ = manager.addLabelLayer(option: layerOption)
+            ))
+            // 코스 지점 마커는 주변 장소 마커보다 위에
+            _ = manager.addLabelLayer(option: LabelLayerOptions(
+                layerID: typedLayerID,
+                competitionType: .none,
+                competitionUnit: .symbolFirst,
+                orderType: .rank,
+                zOrder: 10_002
+            ))
 
             // 디자인시스템 마커 에셋(SVG). 물방울은 팁이 하단이라 anchor y≈0.95.
             let tip = CGPoint(x: 0.5, y: 0.95)
@@ -210,7 +247,7 @@ extension KakaoMapView {
         private func renderTypedMarkers(_ markers: [MapMarker]) {
             guard let mapView else { return }
             let manager = mapView.getLabelManager()
-            guard let layer = manager.getLabelLayer(layerID: poiLayerID) else { return }
+            guard let layer = manager.getLabelLayer(layerID: typedLayerID) else { return }
             layer.clearAllItems()
             for marker in markers {
                 let options = PoiOptions(styleID: styleID(for: marker.kind))
@@ -218,10 +255,64 @@ extension KakaoMapView {
                 let point = MapPoint(longitude: marker.coordinate.longitude, latitude: marker.coordinate.latitude)
                 layer.addPoi(option: options, at: point)?.show()
             }
-            if let first = markers.first {
-                let point = MapPoint(longitude: first.coordinate.longitude, latitude: first.coordinate.latitude)
-                mapView.moveCamera(CameraUpdate.make(target: point, zoomLevel: 15, mapView: mapView))
+            guard !usesFitBounds, let first = markers.first else { return }
+            let point = MapPoint(longitude: first.coordinate.longitude, latitude: first.coordinate.latitude)
+            mapView.moveCamera(CameraUpdate.make(target: point, zoomLevel: 15, mapView: mapView))
+        }
+
+        // MARK: - 카메라 영역 맞춤
+
+        /// 좌표들이 모두 보이도록 최초 1회 카메라를 맞춘다.
+        /// `bottomInset`(pt)만큼 하단이 가려진다고 보고 그만큼 남쪽으로 영역을 넓혀
+        /// 코스가 가려지지 않은 위쪽 영역에 오도록 한다.
+        func updateFitBounds(_ coords: [CLLocationCoordinate2D],
+                             topInset: CGFloat, bottomInset: CGFloat) {
+            guard !coords.isEmpty else { return }
+            guard let mapView else {
+                pendingFit = coords
+                pendingFitTopInset = topInset
+                pendingFitInset = bottomInset
+                return
             }
+            // 패널 높이는 1pt 단위 변화로도 갱신되므로 10pt 단위로 뭉쳐 불필요한 재맞춤을 막는다.
+            let key = "\(coords.count)|\(coords[0].latitude),\(coords[0].longitude)"
+                + "|\(coords[coords.count - 1].latitude)"
+                + "|\(Int(topInset / 10))|\(Int(bottomInset / 10))"
+            guard key != lastFitKey else { return }
+            lastFitKey = key
+
+            guard coords.count > 1 else {
+                let p = MapPoint(longitude: coords[0].longitude, latitude: coords[0].latitude)
+                mapView.moveCamera(CameraUpdate.make(target: p, zoomLevel: 15, mapView: mapView))
+                return
+            }
+
+            var minLat = coords[0].latitude, maxLat = minLat
+            var minLng = coords[0].longitude, maxLng = minLng
+            for c in coords {
+                minLat = min(minLat, c.latitude);  maxLat = max(maxLat, c.latitude)
+                minLng = min(minLng, c.longitude); maxLng = max(maxLng, c.longitude)
+            }
+
+            // 마커가 화면 가장자리에 붙어 잘리지 않도록 여백. 아주 짧은 코스는 최소값 적용.
+            let latPad = max((maxLat - minLat) * 0.15, 0.0008)
+            let lngPad = max((maxLng - minLng) * 0.15, 0.0008)
+            minLat -= latPad; maxLat += latPad
+            minLng -= lngPad; maxLng += lngPad
+
+            // 가려지는 만큼 바깥으로 확장해 코스가 실제로 보이는 영역에 들어오게 한다.
+            let height = mapView.viewRect.height
+            let visible = height - topInset - bottomInset
+            if visible > 0, topInset + bottomInset > 0 {
+                let span = maxLat - minLat
+                minLat -= span * bottomInset / visible
+                maxLat += span * topInset / visible
+            }
+
+            mapView.moveCamera(CameraUpdate.make(area: AreaRect(
+                southWest: MapPoint(longitude: minLng, latitude: minLat),
+                northEast: MapPoint(longitude: maxLng, latitude: maxLat)
+            )))
         }
 
         private func renderMarkers(_ places: [MapPlace]) {
@@ -229,18 +320,18 @@ extension KakaoMapView {
             let manager = mapView.getLabelManager()
             guard let layer = manager.getLabelLayer(layerID: poiLayerID) else { return }
             layer.clearAllItems()
-            for place in places {
+            // 앞쪽(가까운) 장소일수록 rank를 높여 경쟁에서 살아남게 한다.
+            for (index, place) in places.enumerated() {
                 let options = PoiOptions(styleID: placeStyleID(for: place.category))
-                options.rank = 0
+                options.rank = Int(max(0, places.count - index))
                 let point = MapPoint(longitude: place.longitude, latitude: place.latitude)
                 let poi = layer.addPoi(option: options, at: point)
                 poi?.show()
             }
-            // 첫 마커로 카메라 이동
-            if let first = places.first {
-                let point = MapPoint(longitude: first.longitude, latitude: first.latitude)
-                mapView.moveCamera(CameraUpdate.make(target: point, zoomLevel: 15, mapView: mapView))
-            }
+            // 첫 마커로 카메라 이동 (영역 맞춤 사용 시에는 건너뜀)
+            guard !usesFitBounds, let first = places.first else { return }
+            let point = MapPoint(longitude: first.longitude, latitude: first.latitude)
+            mapView.moveCamera(CameraUpdate.make(target: point, zoomLevel: 15, mapView: mapView))
         }
 
         // MARK: - 경로선 (T MAP 폴리라인)

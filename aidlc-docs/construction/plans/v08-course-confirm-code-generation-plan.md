@@ -78,21 +78,30 @@ BE: `GET /courses/{id}` (polyline 실측 확인 완료)
 ## D. 변경 파일 목록
 
 ### 선행 수정
-- [ ] `Shared/DesignSystem/AppColor.swift` — `primary500` `#8AD68C`→`#72D794`, `gray300Line`(#DFDFDF)·`gray560`(#585858)·`gray460`(#929292) 추가
-- [ ] `Shared/Networking/DTO/CourseDTO.swift` — `region: RegionDTO` → `String` (디코딩 버그)
+- [x] `Shared/DesignSystem/AppColor.swift` — `primary500` `#8AD68C`→`#72D794`, `gray400`(#929292)·`gray750`(#585858)·`grabber`(#DFDFDF) 추가
+  - ※ 계획 시 `gray300`도 틀린 줄 알았으나 디자인시스템 변수 조회 결과 `#CCCCCC`가 맞음 → 유지
+- [x] `Shared/Networking/DTO/CourseDTO.swift` — `region: RegionDTO` → `String` (디코딩 버그)
 
 ### V08 신규/수정
-- [ ] `Domain/Models/RunCourse.swift` — **신규**. V08/V09 공용 코스 모델 (polyline·누적거리·지점명·총거리). 두 진입 경로를 하나로 통일
-- [ ] `Shared/Networking/DallyeoAPI.swift` — `courseDetail(id:)` 반환을 `RunCourse`로 매핑하는 변환 추가
-- [ ] `Features/CourseConfirm/ViewModel/CourseConfirmViewModel.swift` — 이니셜라이저 2종(draft / courseId), BE 로드, 근방 장소 샘플링 조회, 로딩·에러 상태
-- [ ] `Features/CourseConfirm/View/CourseConfirmView.swift` — HiFi 전면 반영 (A절 실측값), `routePolyline`·`markers` 지도 전달
-- [ ] `Features/CourseConfirm/View/CourseSummaryCard.swift` — **신규**. 카드 분리 (거리/수정칩/구분선/지점리스트)
-- [ ] `Features/CourseConfirm/View/WaypointNumberBadge.swift` — **신규**. 원형 번호 마커(1~5)
-- [ ] `ContentView.swift` — `AppRoute.courseConfirm`에 코스 소스 전달
+- [x] `Domain/Models/RunCourse.swift` — **신규**. V08/V09 공용 코스 모델
+- [x] `Domain/RouteDraft.swift` — T MAP 폴리라인/실거리 보관 (V07→V08 경로 유실 버그)
+- [x] `Features/CourseConfirm/ViewModel/CourseConfirmViewModel.swift` — 이니셜라이저 2종, BE 로드, 근방 장소 병렬 조회
+- [x] `Features/CourseConfirm/View/CourseConfirmView.swift` — HiFi 전면 반영
+- [x] `Features/CourseConfirm/View/CourseSummaryCard.swift` — **신규**
+- [x] `Features/CourseConfirm/View/WaypointNumberBadge.swift` — **신규** (디자인시스템 `경유` 컴포넌트 = SF Symbol)
+- [x] `Shared/Utilities/DistanceFormat.swift` — **신규**. V07/V08/V09 거리 표기 통일
+- [x] `Features/Map/View/KakaoMapView.swift` — 마커 레이어 분리, 카메라 영역 맞춤, 마커 겹침 경쟁
+- [x] `ContentView.swift` — `AppRoute.courseConfirm(courseId:)`
+- [ ] ~~`DallyeoAPI.swift` 변환 추가~~ — 불필요. 변환은 `RunCourse.init(detail:)`이 담당
 
-### 검증
-- [ ] 시뮬레이터 빌드 + 실행, Figma 대비 픽셀 실측 (거리/칩/구분선/행간/버튼 위치)
-- [ ] 경유지 0·1·3·5개 각 변형 확인 (`565:604`~`565:692`)
+### 검증 (iPhone 17 Pro 402×874 = Figma 프레임과 동일)
+- [x] Figma `경유없음`(565:692) 대비 레이아웃 일치 — 출발/도착 들여쓰기까지
+- [x] Figma `경유5`(565:523) 대비 레이아웃 일치 — 번호 배지 ①~⑤
+- [x] V07→V08 T MAP 폴리라인 인계
+- [x] BE `/courses/{id}` 폴리라인 렌더 (gunsan-modern-history-run, 391포인트)
+- [x] 거리 표기 V07/V08 일치 (0.25km)
+- [x] 코스 전체가 지도에 보임 (상단 상태바 / 하단 시트 가림 보정)
+- [x] 주변 장소 마커 렌더 + 겹침 정리
 
 ---
 

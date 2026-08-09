@@ -145,11 +145,12 @@ final class RouteEditViewModel {
     }
 
     /// 표시용 총거리. T MAP 실거리 우선, 없으면 직선거리.
+    /// 포맷은 V08/V09와 공유 — `DistanceFormat` 참조.
     var totalDistanceText: String {
         if let m = routeMeters {
-            return String(format: "%.2fkm", Double(m) / 1000)
+            return DistanceFormat.km(meters: m)
         }
-        return String(format: "%.2fkm", straightDistanceKm)
+        return DistanceFormat.km(meters: straightDistanceKm * 1000)
     }
 
     private static func haversine(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> Double {

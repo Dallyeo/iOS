@@ -68,14 +68,9 @@ struct RunCourse {
 
     // MARK: 표시용
 
-    /// "23km" — Figma V08 총거리 표기.
-    /// 10km 이상은 정수, 미만은 소수 1자리로 자릿수 폭주를 막는다.
+    /// 총 거리 표기. 규칙은 `DistanceFormat` 한 곳에서만 관리한다(V07/V08/V09 공통).
     var totalDistanceText: String {
-        guard totalMeters > 0 else { return "-" }
-        let km = Double(totalMeters) / 1000
-        return km >= 10
-            ? String(format: "%.0fkm", km)
-            : String(format: "%.1fkm", km)
+        DistanceFormat.km(meters: totalMeters)
     }
 
     var startPoint: CoursePoint? { points.first { $0.role == .start } }

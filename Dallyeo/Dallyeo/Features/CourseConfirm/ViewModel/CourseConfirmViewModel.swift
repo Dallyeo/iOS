@@ -51,30 +51,31 @@ final class CourseConfirmViewModel {
     var points: [CoursePoint] { course?.points ?? [] }
     var routePolyline: [CLLocationCoordinate2D] { course?.polyline ?? [] }
 
-    /// 지도 마커 = 코스 지점 + 근방 장소
+    /// 코스 지점 마커 (출발/경유/도착)
     var mapMarkers: [MapMarker] { course?.mapMarkers ?? [] }
+    /// 코스 전체가 보이도록 카메라를 맞출 좌표들
+    var boundsCoordinates: [CLLocationCoordinate2D] { course?.boundsCoordinates ?? [] }
 
     // MARK: - 로드
 
     func load() async {
-        guard case .backend(let courseId) = source else {
-            // 직접 만든 코스는 이미 확정 → 근방 장소만 조회
-            await loadNearbyPlaces()
-            return
-        }
-        guard course == nil, !isLoading else { return }
+        // 추천 코스는 먼저 코스를 받아온다. 직접 만든 코스는 이미 확정 상태.
+        if case .backend(let courseId) = source {
+            guard course == nil, !isLoading else { return }
 
-        isLoading = true
-        loadFailed = false
-        defer { isLoading = false }
-
-        do {
-            let detail = try await DallyeoAPI.courseDetail(id: courseId)
-            course = RunCourse(detail: detail)
-            await loadNearbyPlaces()
-        } catch {
-            loadFailed = true
+            isLoading = true
+            loadFailed = false
+            do {
+                let detail = try await DallyeoAPI.courseDetail(id: courseId)
+                course = RunCourse(detail: detail)
+            } catch {
+                loadFailed = true
+            }
+            // 주변 장소는 코스 표시를 막지 않는다 — 여기서 로딩을 끝낸다.
+            isLoading = false
+            guard !loadFailed else { return }
         }
+        await loadNearbyPlaces()
     }
 
     // MARK: - 코스 근방 장소
@@ -90,21 +91,36 @@ final class CourseConfirmViewModel {
         let samples = sampleCoordinates()
         guard !samples.isEmpty else { return }
 
-        var merged: [String: MapPlace] = [:]
-        for coord in samples {
-            for category in Self.nearbyCategories {
-                guard let dtos = try? await DallyeoAPI.nearbyPlaces(
-                    lat: coord.latitude,
-                    lng: coord.longitude,
-                    radius: Self.nearbyRadiusMeters,
-                    category: category
-                ) else { continue }
-                for dto in dtos where merged[dto.id] == nil {
-                    merged[dto.id] = MapPlace(dto: dto)
+        // 최대 5지점 × 4카테고리 = 20회. 순차로 돌리면 수 초가 걸리므로 병렬로 던진다.
+        let radius = Self.nearbyRadiusMeters
+        let requests = samples.flatMap { coord in
+            Self.nearbyCategories.map { (coord, $0) }
+        }
+
+        let fetched = await withTaskGroup(of: [PlaceSummaryDTO].self) { group in
+            for (coord, category) in requests {
+                group.addTask {
+                    (try? await DallyeoAPI.nearbyPlaces(
+                        lat: coord.latitude,
+                        lng: coord.longitude,
+                        radius: radius,
+                        category: category
+                    )) ?? []
                 }
             }
+            var all: [PlaceSummaryDTO] = []
+            for await result in group { all += result }
+            return all
         }
-        nearbyPlaces = Array(merged.values)
+
+        // id 중복 제거 후 가까운 순으로 상한을 둔다.
+        // (샘플 지점들의 반경 1km가 서로 겹쳐 수백 개까지 쌓일 수 있다)
+        var seen = Set<String>()
+        nearbyPlaces = fetched
+            .filter { seen.insert($0.id).inserted }
+            .sorted { ($0.distanceMeters ?? .greatestFiniteMagnitude) < ($1.distanceMeters ?? .greatestFiniteMagnitude) }
+            .prefix(Self.maxNearbyMarkers)
+            .map(MapPlace.init(dto:))
     }
 
     /// 코스 근방 검색 반경(m). 스펙 "코스 근방 1km".
@@ -113,6 +129,8 @@ final class CourseConfirmViewModel {
     private static let nearbyCategories = ["TOUR", "CULTURE", "RESTAURANT", "CAFE"]
     /// 샘플 지점 최대 개수. (지점당 카테고리 4회 호출 → 과다 요청 방지)
     private static let maxSamples = 5
+    /// 지도에 찍을 주변 마커 상한. 넘으면 지도가 마커로 뒤덮인다.
+    private static let maxNearbyMarkers = 40
 
     /// 폴리라인을 균등 간격으로 샘플링. 폴리라인이 없으면 코스 지점을 쓴다.
     private func sampleCoordinates() -> [CLLocationCoordinate2D] {

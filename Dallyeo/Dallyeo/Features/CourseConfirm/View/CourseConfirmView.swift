@@ -11,6 +11,11 @@ import SwiftUI
 struct CourseConfirmView: View {
 
     @State private var viewModel: CourseConfirmViewModel
+    /// 하단 패널이 지도를 가리는 높이. 코스 전체 보기 시 이만큼 보정한다.
+    /// (경유지 수에 따라 패널 높이가 달라져 실측이 필요하다)
+    @State private var panelHeight: CGFloat = 0
+    /// 상태바/다이나믹 아일랜드에 마커가 가리지 않도록 확보할 상단 높이
+    @State private var safeAreaTop: CGFloat = 0
     /// "수정" → V07 경로수정으로 복귀
     var onEdit: (() -> Void)?
     /// "러닝 시작하기" → V09 코스진행 (카운트다운은 V09에서)
@@ -44,11 +49,21 @@ struct CourseConfirmView: View {
                 places: viewModel.nearbyPlaces,
                 showsPlaceMarkers: true,
                 routePolyline: viewModel.routePolyline,
-                markers: viewModel.mapMarkers
+                markers: viewModel.mapMarkers,
+                // 패널 높이를 재기 전에는 맞춤을 미룬다 (카메라 맞춤은 1회성이라 선반영 필요)
+                fitCoordinates: panelHeight > 0 ? viewModel.boundsCoordinates : [],
+                fitBottomInset: panelHeight,
+                fitTopInset: safeAreaTop
             )
             .ignoresSafeArea()
 
             bottomPanel
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
+                    panelHeight = $0
+                }
+        }
+        .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: {
+            safeAreaTop = $0
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
