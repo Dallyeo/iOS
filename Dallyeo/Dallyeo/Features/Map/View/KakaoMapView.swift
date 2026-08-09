@@ -157,17 +157,29 @@ extension KakaoMapView {
             )
             _ = manager.addLabelLayer(option: layerOption)
 
-            addPoiStyle(manager, styleID: poiStyleID, image: markerImage())
-
-            // 종류별 마커 스타일 (디자인시스템 마커 세트)
-            addPoiStyle(manager, styleID: "m_current", image: currentLocationImage())
-            addPoiStyle(manager, styleID: "m_start", image: startMarkerImage())
-            addPoiStyle(manager, styleID: "m_dest", image: destinationMarkerImage())
+            // 디자인시스템 마커 에셋(SVG). 물방울은 팁이 하단이라 anchor y≈0.95.
+            let tip = CGPoint(x: 0.5, y: 0.95)
+            addPoiStyle(manager, styleID: poiStyleID, image: asset("marker_attraction"), anchor: tip)
+            addPoiStyle(manager, styleID: "m_place_attraction", image: asset("marker_attraction"), anchor: tip)
+            addPoiStyle(manager, styleID: "m_place_restaurant", image: asset("marker_convenience"), anchor: tip)
+            addPoiStyle(manager, styleID: "m_place_convenience", image: asset("marker_convenience"), anchor: tip)
+            addPoiStyle(manager, styleID: "m_current", image: asset("marker_pin"), anchor: tip)
+            addPoiStyle(manager, styleID: "m_start", image: asset("marker_start"), anchor: tip)
+            addPoiStyle(manager, styleID: "m_dest", image: asset("marker_destination"), anchor: tip)
             for n in 1...5 {
                 // 번호 원은 지점 위 중앙 정렬
                 addPoiStyle(manager, styleID: "m_wp\(n)", image: waypointMarkerImage(n),
                             anchor: CGPoint(x: 0.5, y: 0.5))
             }
+        }
+
+        /// 마커 에셋 로드 (없으면 코드 렌더 폴백)
+        private func asset(_ name: String) -> UIImage {
+            UIImage(named: name) ?? markerImage()
+        }
+
+        private func placeStyleID(for category: PlaceCategory) -> String {
+            category == .restaurant ? "m_place_restaurant" : "m_place_attraction"
         }
 
         private func addPoiStyle(_ manager: LabelManager, styleID: String, image: UIImage,
@@ -217,7 +229,7 @@ extension KakaoMapView {
             guard let layer = manager.getLabelLayer(layerID: poiLayerID) else { return }
             layer.clearAllItems()
             for place in places {
-                let options = PoiOptions(styleID: poiStyleID)
+                let options = PoiOptions(styleID: placeStyleID(for: place.category))
                 options.rank = 0
                 let point = MapPoint(longitude: place.longitude, latitude: place.latitude)
                 let poi = layer.addPoi(option: options, at: point)
@@ -301,47 +313,6 @@ extension KakaoMapView {
                 UIColor.white.setFill()
                 UIBezierPath(ovalIn: CGRect(x: center.x - dotR, y: center.y - dotR,
                                             width: dotR * 2, height: dotR * 2)).fill()
-            }
-        }
-
-        private func currentLocationImage() -> UIImage { markerImage() }
-
-        // 출발: 흰 내비 화살표(위쪽 삼각형)
-        private func startMarkerImage() -> UIImage {
-            teardropMarker { center, _ in
-                let w: CGFloat = 12, h: CGFloat = 12
-                let tri = UIBezierPath()
-                tri.move(to: CGPoint(x: center.x, y: center.y - h / 2))          // 꼭짓점(위)
-                tri.addLine(to: CGPoint(x: center.x - w / 2, y: center.y + h / 2)) // 좌하
-                tri.addLine(to: CGPoint(x: center.x, y: center.y + h / 4))        // 중앙 하단 노치
-                tri.addLine(to: CGPoint(x: center.x + w / 2, y: center.y + h / 2)) // 우하
-                tri.close()
-                UIColor.white.setFill()
-                tri.fill()
-            }
-        }
-
-        // 도착: 흰 깃발
-        private func destinationMarkerImage() -> UIImage {
-            teardropMarker { center, _ in
-                UIColor.white.setStroke()
-                UIColor.white.setFill()
-                let poleX = center.x - 4.5
-                let top = center.y - 6.0
-                // 깃대
-                let pole = UIBezierPath()
-                pole.move(to: CGPoint(x: poleX, y: top))
-                pole.addLine(to: CGPoint(x: poleX, y: center.y + 6))
-                pole.lineWidth = 1.6
-                pole.lineCapStyle = .round
-                pole.stroke()
-                // 깃발(삼각형)
-                let flag = UIBezierPath()
-                flag.move(to: CGPoint(x: poleX, y: top))
-                flag.addLine(to: CGPoint(x: poleX + 9, y: top + 3))
-                flag.addLine(to: CGPoint(x: poleX, y: top + 6))
-                flag.close()
-                flag.fill()
             }
         }
 
