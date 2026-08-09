@@ -159,9 +159,10 @@ extension KakaoMapView {
 
             // 디자인시스템 마커 에셋(SVG). 물방울은 팁이 하단이라 anchor y≈0.95.
             let tip = CGPoint(x: 0.5, y: 0.95)
-            addPoiStyle(manager, styleID: poiStyleID, image: asset("marker_attraction"), anchor: tip)
+            addPoiStyle(manager, styleID: poiStyleID, image: asset("marker_pin"), anchor: tip)
             addPoiStyle(manager, styleID: "m_place_attraction", image: asset("marker_attraction"), anchor: tip)
-            addPoiStyle(manager, styleID: "m_place_restaurant", image: asset("marker_convenience"), anchor: tip)
+            // 음식점 전용 마커는 디자인에 없음 → 중립 pin (임의 매핑 안 함)
+            addPoiStyle(manager, styleID: "m_place_restaurant", image: asset("marker_pin"), anchor: tip)
             addPoiStyle(manager, styleID: "m_place_convenience", image: asset("marker_convenience"), anchor: tip)
             addPoiStyle(manager, styleID: "m_current", image: asset("marker_pin"), anchor: tip)
             addPoiStyle(manager, styleID: "m_start", image: asset("marker_start"), anchor: tip)
