@@ -15,7 +15,9 @@ enum AppRoute: Hashable {
     case routeEdit                     // V07
     /// V08. `courseId`가 있으면 BE 추천 코스, nil이면 V07에서 만든 코스(RouteDraft)
     case courseConfirm(courseId: String?)
-    case running                       // V09
+    /// V09. `courseId`가 있으면 웹에서 바로 시작한 경우라 코스를 직접 불러온다.
+    /// nil이면 V08에서 확정한 코스를 그대로 쓴다.
+    case running(courseId: String?)
 }
 
 struct ContentView: View {
@@ -25,11 +27,20 @@ struct ContentView: View {
     /// V08에서 확정된 코스. V09가 이걸 그대로 받아 진행한다.
     @State private var runningCourse: RunCourse?
 
+    /// 진입 시 곧바로 밀어 넣을 화면. 웹에서 브릿지로 특정 화면을 열 때 쓴다.
+    /// nil이면 V03 지도부터 시작(네이티브 단독 실행).
+    var initialRoute: AppRoute?
+    /// 러닝 완료. 웹 컨테이너가 받아 `runCompleted` 이벤트로 넘긴다.
+    var onRunFinished: ((RunResult) -> Void)?
+    /// 네이티브 흐름을 빠져나감(뿌리에서 뒤로가기). 웹으로 돌아갈 때 쓴다.
+    var onExit: (() -> Void)?
+
     var body: some View {
         NavigationStack(path: $path) {
             MapView(
                 onSearchTap: { path.append(.search) },
                 onSelectPlace: { path.append(.locationInfo(place: $0)) },
+                onBack: onExit,
                 bottomSheetVisible: path.isEmpty
             )
             .navigationDestination(for: AppRoute.self) { route in
@@ -37,7 +48,10 @@ struct ContentView: View {
             }
         }
         .environment(routeDraft)
-        .task { LocationProvider.shared.start() }
+        .task {
+            LocationProvider.shared.start()
+            if let initialRoute, path.isEmpty { path.append(initialRoute) }
+        }
     }
 
     @ViewBuilder
@@ -85,7 +99,7 @@ struct ContentView: View {
                     onEdit: { path.removeLast() },
                     onStart: { course in
                         runningCourse = course
-                        path.append(.running)
+                        path.append(.running(courseId: nil))
                     }
                 )
             } else {
@@ -94,19 +108,23 @@ struct ContentView: View {
                     onEdit: { path.removeLast() },     // V07 경로수정으로 복귀
                     onStart: { course in
                         runningCourse = course
-                        path.append(.running)
+                        path.append(.running(courseId: nil))
                     }
                 )
             }
-        case .running:
-            if let runningCourse {
-                RunningView(
-                    course: runningCourse,
-                    onFinish: { _ in
-                        // TODO: 웹 V10으로 runCompleted 이벤트. 현재는 지도까지 pop
-                        path.removeAll()
-                    }
-                )
+        case .running(let courseId):
+            let finish: (RunResult) -> Void = { result in
+                path.removeAll()
+                // 웹이 붙어 있으면 V10 완주 결과로 넘긴다. 없으면 지도로 복귀.
+                onRunFinished?(result)
+            }
+            if let courseId {
+                // 웹에서 바로 시작 — 코스를 먼저 불러온다
+                RunCourseLoader(courseId: courseId) { course in
+                    RunningView(course: course, onFinish: finish)
+                }
+            } else if let runningCourse {
+                RunningView(course: runningCourse, onFinish: finish)
             }
         }
     }

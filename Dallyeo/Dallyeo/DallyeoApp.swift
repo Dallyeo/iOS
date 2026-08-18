@@ -21,7 +21,8 @@ struct DallyeoApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            // 앱 진입점 = 웹 컨테이너. 웹(V01/V02/V10~) 위에 네이티브(V03~V09)를 얹는다.
+            WebContainerView(coordinator: AppCoordinator())
         }
     }
 }

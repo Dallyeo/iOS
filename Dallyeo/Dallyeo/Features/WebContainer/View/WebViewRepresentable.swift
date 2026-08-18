@@ -40,10 +40,20 @@ struct WebViewRepresentable: UIViewRepresentable {
             bridge.webView = webView
         }
 
-        // 로컬 HTML 로드
-        loadLocalHTML(webView)
+        // 배포 FE 웹앱 로드 (검증용). 실패 시 로컬 번들/더미로 폴백.
+        loadWeb(webView)
 
         return webView
+    }
+
+    // MARK: - Load Deployed Web
+
+    private func loadWeb(_ webView: WKWebView) {
+        guard let url = URL(string: WebConfig.webURLString) else {
+            loadLocalHTML(webView)
+            return
+        }
+        webView.load(URLRequest(url: url))
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
