@@ -39,6 +39,12 @@ struct KakaoMapView: UIViewRepresentable {
     var fitBottomInset: CGFloat = 0
     /// 지도 상단이 상태바/다이나믹 아일랜드에 가려지는 높이(pt).
     var fitTopInset: CGFloat = 0
+    /// 진행 방향(도, 진북 기준). 주면 그 방향이 화면 위가 되도록 지도를 돌린다.
+    /// 내비게이션처럼 "가는 쪽이 직진"으로 보이게 하는 용도. `followsUser`와 함께 쓴다.
+    var heading: Double?
+    /// 지나온 경로를 지울 기준 위치. 주면 시작점~이 지점 구간이 비워진다(V09 러닝).
+    /// 경로선을 매번 지웠다 다시 그리지 않고 SDK의 progress 기능을 쓴다.
+    var routeProgressPosition: CLLocationCoordinate2D?
 
     func makeUIView(context: Context) -> KMViewContainer {
         let bounds = UIApplication.shared.connectedScenes
@@ -54,6 +60,8 @@ struct KakaoMapView: UIViewRepresentable {
         // 영역 맞춤을 쓰면 마커별 카메라 이동은 하지 않는다 (서로 밀어내는 것 방지)
         context.coordinator.usesFitBounds = !fitCoordinates.isEmpty
         context.coordinator.placeMarkerRole = placeMarkerRole
+        context.coordinator.followsUser = followsUser
+        context.coordinator.heading = heading
         context.coordinator.updateLocation(userLocation, follow: followsUser)
         if !markers.isEmpty {
             context.coordinator.updateMarkers(markers)
@@ -62,6 +70,7 @@ struct KakaoMapView: UIViewRepresentable {
             context.coordinator.updatePlaces(places)
         }
         context.coordinator.updateRoute(routePolyline)
+        context.coordinator.updateRouteProgress(routeProgressPosition)
         context.coordinator.updateFitBounds(fitCoordinates,
                                             topInset: fitTopInset,
                                             bottomInset: fitBottomInset)
@@ -98,6 +107,10 @@ extension KakaoMapView {
         var usesFitBounds = false
         /// place 마커 역할 (검색/선택 위치 vs 코스 주변 POI)
         var placeMarkerRole: PlaceMarkerRole = .searched
+        /// 현위치를 따라가는 화면(V09)인지. true면 카메라 주도권은 현위치에 있다.
+        var followsUser = false
+        /// 진행 방향(도). 지도를 이만큼 돌려 진행 방향이 화면 위가 되게 한다.
+        var heading: Double?
 
         private let poiLayerID = "placeLayer"
         private let poiStyleID = "placeMarker"
@@ -109,6 +122,8 @@ extension KakaoMapView {
         private let routeStyleID = "routeStyleSet"
         private var didRegisterRouteStyle = false
         private var lastRouteSignature = ""
+        /// 마지막으로 적용한 경로 진행률(0~1). 전진만 허용한다.
+        private var lastProgress: Float = 0
 
         func setup(container: KMViewContainer) {
             self.container = container
@@ -177,7 +192,20 @@ extension KakaoMapView {
             }
             didCenterOnUser = true
             let point = MapPoint(longitude: coord.longitude, latitude: coord.latitude)
-            mapView.moveCamera(CameraUpdate.make(target: point, zoomLevel: 16, mapView: mapView))
+            // 추적 중(V09)에는 더 가깝게. 진행 방향을 읽을 수 있어야 한다.
+            guard follow, let heading else {
+                mapView.moveCamera(CameraUpdate.make(target: point,
+                                                     zoomLevel: follow ? 17 : 16,
+                                                     mapView: mapView))
+                return
+            }
+            // 진행 방향이 화면 위로 오도록 지도를 반대로 돌린다(내비게이션 방식).
+            // Kakao의 rotation은 라디안이며 시계 반대 방향이 +.
+            mapView.moveCamera(CameraUpdate.make(target: point,
+                                                 zoomLevel: 17,
+                                                 rotation: -heading * .pi / 180,
+                                                 tilt: 0,
+                                                 mapView: mapView))
         }
 
         // MARK: - 마커
@@ -210,8 +238,9 @@ extension KakaoMapView {
                 zOrder: 10_002
             ))
 
-            // 디자인시스템 마커 에셋(SVG). 물방울은 팁이 하단이라 anchor y≈0.95.
-            let tip = CGPoint(x: 0.5, y: 0.95)
+            // 디자인시스템 마커 에셋(SVG). 앵커는 각 도형의 "뾰족한 끝"이 실제 좌표에
+            // 놓이도록 맞춘다. 그래야 경로선 시작/끝점과 마커 끝이 붙는다.
+            let tip = CGPoint(x: 0.5, y: 0.95)          // 아래로 뾰족한 물방울
             addPoiStyle(manager, styleID: poiStyleID, image: asset("marker_pin"), anchor: tip)
             addPoiStyle(manager, styleID: "m_place_attraction", image: asset("marker_attraction"), anchor: tip)
             // 음식점 전용 마커는 디자인에 없음 → 중립 pin (임의 매핑 안 함)
@@ -220,8 +249,10 @@ extension KakaoMapView {
             // 진행중 현재위치(디자인시스템 822:1145)는 원형이라 중앙 앵커
             addPoiStyle(manager, styleID: "m_current", image: asset("marker_current"),
                         anchor: CGPoint(x: 0.5, y: 0.5))
-            addPoiStyle(manager, styleID: "m_start", image: asset("marker_start"), anchor: tip)
-            addPoiStyle(manager, styleID: "m_dest", image: asset("marker_destination"), anchor: tip)
+            // marker_start.svg는 뾰족한 끝이 위인 도형이라 180도 뒤집어 아래로 향하게 한다.
+            addPoiStyle(manager, styleID: "m_start", image: flipped(asset("marker_start")), anchor: tip)
+            addPoiStyle(manager, styleID: "m_dest", image: asset("marker_destination"),
+                        anchor: CGPoint(x: 0.5, y: 0.97))
             for n in 1...5 {
                 // 번호 원은 지점 위 중앙 정렬
                 addPoiStyle(manager, styleID: "m_wp\(n)", image: waypointMarkerImage(n),
@@ -229,9 +260,31 @@ extension KakaoMapView {
             }
         }
 
-        /// 마커 에셋 로드 (없으면 코드 렌더 폴백)
+        /// 이미지를 180도 회전. 뾰족한 끝 방향을 맞출 때 쓴다.
+        private func flipped(_ image: UIImage) -> UIImage {
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = image.scale
+            return UIGraphicsImageRenderer(size: image.size, format: format).image { ctx in
+                ctx.cgContext.translateBy(x: image.size.width / 2, y: image.size.height / 2)
+                ctx.cgContext.rotate(by: .pi)
+                image.draw(in: CGRect(x: -image.size.width / 2, y: -image.size.height / 2,
+                                      width: image.size.width, height: image.size.height))
+            }
+        }
+
+        /// 마커 에셋 로드 (없으면 코드 렌더 폴백).
+        ///
+        /// 카카오 SDK는 심볼 이미지를 **2x 기준**으로 해석한다. 벡터 에셋을 그대로 넘기면
+        /// 3x 기기에서 화면 배율대로 래스터돼(70pt → 210px) 1.5배 크게 그려진다.
+        /// 배율에 상관없이 같은 크기로 나오도록 항상 scale 2로 다시 그려서 넘긴다.
         private func asset(_ name: String) -> UIImage {
-            UIImage(named: name) ?? markerImage()
+            let base = UIImage(named: name) ?? markerImage()
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = 2
+            format.opaque = false
+            return UIGraphicsImageRenderer(size: base.size, format: format).image { _ in
+                base.draw(in: CGRect(origin: .zero, size: base.size))
+            }
         }
 
         /// 역할에 따라 마커 스타일을 고른다.
@@ -282,10 +335,14 @@ extension KakaoMapView {
             for marker in markers {
                 let options = PoiOptions(styleID: styleID(for: marker.kind))
                 options.rank = 0
+                // 지도가 회전해도 마커는 정자세 유지 (V09 내비게이션 회전 대응)
+                options.transformType = .default
                 let point = MapPoint(longitude: marker.coordinate.longitude, latitude: marker.coordinate.latitude)
                 layer.addPoi(option: options, at: point)?.show()
             }
-            guard !usesFitBounds, let first = markers.first else { return }
+            // 현위치 추적 화면에서는 카메라를 옮기지 않는다.
+            // (옮기면 러너가 아니라 첫 마커로 끌려가고 줌도 되돌아간다)
+            guard !usesFitBounds, !followsUser, let first = markers.first else { return }
             let point = MapPoint(longitude: first.coordinate.longitude, latitude: first.coordinate.latitude)
             mapView.moveCamera(CameraUpdate.make(target: point, zoomLevel: 15, mapView: mapView))
         }
@@ -359,7 +416,7 @@ extension KakaoMapView {
                 poi?.show()
             }
             // 첫 마커로 카메라 이동 (영역 맞춤 사용 시에는 건너뜀)
-            guard !usesFitBounds, let first = places.first else { return }
+            guard !usesFitBounds, !followsUser, let first = places.first else { return }
             let point = MapPoint(longitude: first.longitude, latitude: first.latitude)
             mapView.moveCamera(CameraUpdate.make(target: point, zoomLevel: 15, mapView: mapView))
         }
@@ -406,6 +463,24 @@ extension KakaoMapView {
             options.segments = [segment]
             let route = layer.addRoute(option: options)
             route?.show()
+            lastProgress = 0
+        }
+
+        /// 지나온 구간 지우기. 경로선은 그대로 두고 진행률만 갱신한다.
+        /// (매번 clearAllRoutes + addRoute를 하면 경로가 아예 사라진다)
+        func updateRouteProgress(_ position: CLLocationCoordinate2D?) {
+            guard let position, let mapView else { return }
+            let manager = mapView.getRouteManager()
+            guard let layer = manager.getRouteLayer(layerID: routeLayerID),
+                  let route = layer.getRoute(routeID: "route") else { return }
+
+            let point = MapPoint(longitude: position.longitude, latitude: position.latitude)
+            let progress = route.getProgressAlongRouteLine(position: point)
+            guard progress.isFinite, progress > 0 else { return }
+            // 되돌아가지 않게 전진만. 잔떨림은 무시.
+            guard progress > lastProgress + 0.001 else { return }
+            lastProgress = progress
+            route.setProgress(progress: progress, type: .clearFromStart, duration: 300)
         }
 
         private static let markerGreen = UIColor(red: 0x13 / 255, green: 0xC6 / 255, blue: 0x74 / 255, alpha: 1)

@@ -32,6 +32,9 @@ final class RunningViewModel: NSObject {
 
     var userLocation: CLLocationCoordinate2D?
     var traveledPath: [CLLocationCoordinate2D] = []
+    /// 진행 방향(도, 진북 기준). 정지 상태 등으로 못 구하면 nil.
+    /// 지도를 이 방향으로 돌려 "가는 쪽이 화면 위"가 되게 한다(내비게이션 방식).
+    var headingDegrees: Double?
 
     /// 현재 떠 있는 알럿. 디자인은 일시정지(569:673) / 종료 확인(569:1142) 2종.
     /// 경로 이탈도 스펙상 "종료할 것인지 묻는다"라 종료 확인을 재사용한다.
@@ -278,6 +281,8 @@ extension RunningViewModel: CLLocationManagerDelegate {
             self.userLocation = loc.coordinate
             // 현재 페이스 (speed m/s → 초/km)
             self.currentPaceSecPerKm = loc.speed > 0.3 ? Int(1000 / loc.speed) : 0
+            // course는 정지 중이면 음수가 온다. 그럴 땐 직전 방향을 유지한다.
+            if loc.course >= 0 { self.headingDegrees = loc.course }
             self.advanceTargetIfReached()
             self.checkDeviation()
         }

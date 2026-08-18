@@ -39,7 +39,13 @@ struct RouteEditView: View {
                 userLocation: nil,
                 places: [],
                 routePolyline: viewModel.routePolyline,
-                markers: viewModel.mapMarkers
+                markers: viewModel.mapMarkers,
+                // 경로 전체가 보이도록 카메라를 맞춘다. 지점이 바뀌면 다시 맞춰진다.
+                // (경로 계산 전에는 지점 좌표로라도 맞춘다)
+                fitCoordinates: viewModel.routePolyline.isEmpty
+                    ? viewModel.mapMarkers.map(\.coordinate)
+                    : viewModel.routePolyline,
+                fitTopInset: 56   // 총거리 칩이 가리는 높이
             )
             .ignoresSafeArea(edges: .bottom)
             .overlay(alignment: .top) {

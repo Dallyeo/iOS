@@ -30,7 +30,10 @@ struct RunningView: View {
                     places: [],
                     followsUser: true,
                     routePolyline: viewModel.course.polyline,
-                    markers: viewModel.mapMarkers
+                    markers: viewModel.mapMarkers,
+                    heading: viewModel.headingDegrees,
+                    // 지나온 구간은 지운다 (내비게이션 방식)
+                    routeProgressPosition: viewModel.userLocation
                 )
                 RunningMetricsPanel(
                     elapsedText: formatTime(viewModel.elapsedSec),
