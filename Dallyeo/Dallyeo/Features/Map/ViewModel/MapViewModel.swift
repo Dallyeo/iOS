@@ -115,8 +115,8 @@ final class MapViewModel: NSObject {
                 dtos = try await DallyeoAPI.places(region: "GUNSAN")
             }
             let places = dtos.map { Self.mapPlace(from: $0) }
-            attractions = places.filter { $0.category == .attraction }
-            restaurants = places.filter { $0.category == .restaurant }
+            attractions = places.filter { $0.category.group == .attraction }
+            restaurants = places.filter { $0.category.group == .food }
         } catch {
             attractions = []
             restaurants = []
@@ -125,7 +125,7 @@ final class MapViewModel: NSObject {
 
     /// PlaceSummary DTO → MapPlace
     private static func mapPlace(from d: PlaceSummaryDTO) -> MapPlace {
-        let category: PlaceCategory = d.category.uppercased() == "RESTAURANT" ? .restaurant : .attraction
+        let category = PlaceCategory(backend: d.category)
         let distance = d.distanceMeters.map { m in
             m < 1000 ? "\(Int(m))m" : String(format: "%.1fkm", m / 1000)
         }

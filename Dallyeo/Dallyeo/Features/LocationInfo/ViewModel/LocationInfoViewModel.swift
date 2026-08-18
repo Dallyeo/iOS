@@ -30,7 +30,7 @@ final class LocationInfoViewModel {
     // MARK: - 표시 값
 
     var categoryLabel: String {
-        place.category == .attraction ? "관광지" : "음식점"
+        place.category.label
     }
 
     /// 영업시간. BE가 `<br>` 태그를 섞어 보내므로 개행으로 치환.

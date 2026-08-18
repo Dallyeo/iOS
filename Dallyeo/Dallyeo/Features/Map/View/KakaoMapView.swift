@@ -294,12 +294,9 @@ extension KakaoMapView {
             case .searched:
                 return poiStyleID                    // marker_pin (초록)
             case .nearby:
-                switch category {
-                case .attraction: return "m_place_attraction"   // marker_attraction (분홍)
-                // 음식점 전용 마커는 디자인에 없다. 현재 V08은 음식점을 조회하지 않으므로
-                // 이 분기는 타지 않는다. 마커가 생기면 여기에 연결한다.
-                case .restaurant: return "m_place_attraction"
-                }
+                // 디자인시스템 마커는 관광지/편의시설 2종뿐이다.
+                // 음식점 전용 마커가 없고 쇼핑·숙박은 지도에 띄우지 않는다(PM 확인 대기).
+                return "m_place_attraction"   // marker_attraction (분홍)
             }
         }
 

@@ -56,7 +56,7 @@ final class SearchResultViewModel {
     func cardData(for place: MapPlace) -> PlaceCardData {
         PlaceCardData(
             name: place.name,
-            categoryLabel: place.category == .attraction ? "관광지" : "음식점",
+            categoryLabel: place.category.label,
             distance: place.distance,
             businessHours: nil,
             address: place.address,
@@ -69,7 +69,7 @@ final class SearchResultViewModel {
 
     /// BE PlaceSummary → MapPlace
     private static func mapPlace(from d: PlaceSummaryDTO) -> MapPlace {
-        let category: PlaceCategory = d.category.uppercased() == "RESTAURANT" ? .restaurant : .attraction
+        let category = PlaceCategory(backend: d.category)
         let distance = d.distanceMeters.map { m in
             m < 1000 ? "\(Int(m))m" : String(format: "%.1fkm", m / 1000)
         }
@@ -83,8 +83,9 @@ final class SearchResultViewModel {
 
     /// Kakao → MapPlace (사진 없음)
     private static func mapPlace(from k: KakaoPlace) -> MapPlace {
-        let category: PlaceCategory = (k.categoryGroupCode == "FD6" || k.categoryGroupCode == "CE7")
-            ? .restaurant : .attraction
+        // 카카오 그룹코드: FD6 음식점 / CE7 카페
+        let category: PlaceCategory = k.categoryGroupCode == "CE7" ? .cafe
+            : (k.categoryGroupCode == "FD6" ? .restaurant : .tour)
         return MapPlace(
             id: k.id,
             name: k.name,

@@ -70,7 +70,7 @@ final class RouteEditViewModel {
         guard canAddWaypoint else { return }
         // 빈 경유지 칸 추가 (placeholder). 실제 장소는 검색으로 채움(TODO)
         draft.waypoints.append(
-            MapPlace(id: UUID().uuidString, name: "", category: .attraction,
+            MapPlace(id: UUID().uuidString, name: "", category: .tour,
                      latitude: 0, longitude: 0, thumbnailURL: nil, distance: nil)
         )
     }

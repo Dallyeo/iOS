@@ -54,7 +54,7 @@ final class RouteDraft {
         MapPlace(
             id: "current",
             name: "현재 위치",
-            category: .attraction,
+            category: .tour,
             latitude: coordinate?.lat ?? 0,
             longitude: coordinate?.lng ?? 0,
             thumbnailURL: nil,

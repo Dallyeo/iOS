@@ -168,7 +168,7 @@ private extension MapPlace {
         self.init(
             id: dto.id,
             name: dto.name,
-            category: PlaceCategory(backendCategory: dto.category),
+            category: PlaceCategory(backend: dto.category),
             latitude: dto.latitude,
             longitude: dto.longitude,
             thumbnailURL: dto.thumbnailUrl,
@@ -180,14 +180,3 @@ private extension MapPlace {
     }
 }
 
-private extension PlaceCategory {
-
-    /// BE 카테고리 문자열 → 앱 카테고리.
-    /// 실측 유효값: TOUR, CULTURE, FESTIVAL, SHOPPING, CAFE, RESTAURANT, STAY
-    init(backendCategory: String) {
-        switch backendCategory {
-        case "RESTAURANT", "CAFE": self = .restaurant
-        default:                   self = .attraction
-        }
-    }
-}
