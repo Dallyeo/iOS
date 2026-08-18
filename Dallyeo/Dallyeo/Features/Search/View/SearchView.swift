@@ -37,15 +37,18 @@ struct SearchView: View {
     private var searchBar: some View {
         HStack(spacing: 8) {
             Button { dismiss() } label: {
-                Image(systemName: "arrow.backward")
-                    .font(.system(size: 18, weight: .semibold))
+                Image("ic_west")            // 디자인시스템 back/west
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 21, height: 15)
                     .foregroundStyle(AppColor.gray900)
                     .frame(width: 40, height: 44)
             }
 
             HStack(spacing: 8) {
                 TextField("장소 검색", text: $viewModel.query)
-                    .font(.system(size: 16))
+                    .font(AppFont.pretendard(15, .medium))
                     .foregroundStyle(AppColor.gray900)
                     .focused($fieldFocused)
                     .submitLabel(.search)
@@ -58,7 +61,7 @@ struct SearchView: View {
                 // 지역 칩 (V03과 동일). TODO: 지역 선택/필터 연동
                 Button { viewModel.handleLocationChipTap() } label: {
                     Text(viewModel.locationChipText)
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(AppFont.pretendard(15, .semibold))
                         .foregroundStyle(AppColor.white)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 5)
@@ -97,13 +100,13 @@ struct SearchView: View {
                     } label: {
                         HStack(spacing: 12) {
                             Text(term)
-                                .font(.system(size: 16))
-                                .foregroundStyle(AppColor.gray900)
+                                .font(AppFont.pretendard(14, .regular))
+                                .foregroundStyle(AppColor.gray700)
                             Spacer()
                             if let date = RecentSearchStore.date(for: term) {
                                 Text(date)
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(AppColor.gray500)
+                                    .font(AppFont.pretendard(14, .regular))
+                                    .foregroundStyle(AppColor.gray700)
                             }
                             Button {
                                 viewModel.removeRecent(term)
@@ -133,11 +136,11 @@ struct SearchView: View {
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(suggestion.name)
-                                .font(.system(size: 16))
+                                .font(AppFont.pretendard(16, .regular))
                                 .foregroundStyle(AppColor.gray900)
                             if let address = suggestion.address {
                                 Text(address)
-                                    .font(.system(size: 12))
+                                    .font(AppFont.pretendard(12, .medium))
                                     .foregroundStyle(AppColor.gray500)
                             }
                         }
@@ -152,11 +155,13 @@ struct SearchView: View {
 
     private var emptyRecent: some View {
         VStack(spacing: 12) {
-            Image(systemName: "ellipsis.message.fill")
-                .font(.system(size: 28))
+            Image("ic_no_result")      // 디자인시스템 quick_reference_all
+                .renderingMode(.template)
+                .resizable()
+                .frame(width: 24, height: 24)
                 .foregroundStyle(AppColor.gray300)
             Text("최근 검색 기록이 없어요")
-                .font(.system(size: 14))
+                .font(AppFont.pretendard(14, .medium))
                 .foregroundStyle(AppColor.gray500)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

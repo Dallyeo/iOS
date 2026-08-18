@@ -54,8 +54,11 @@ struct LocationInfoView: View {
 
     private var backButton: some View {
         Button { dismiss() } label: {
-            Image(systemName: "arrow.backward")
-                .font(.system(size: 18, weight: .medium))
+            Image("ic_west")            // 디자인시스템 back/west
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 21, height: 15)
                 .foregroundStyle(AppColor.gray900)
                 .frame(width: 44, height: 44)
                 .background {

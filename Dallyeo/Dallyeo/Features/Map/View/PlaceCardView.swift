@@ -24,21 +24,21 @@ struct PlaceCardView: View {
             // 텍스트 영역 (padding 14)
             VStack(alignment: .leading, spacing: 6) {
                 Text(place.name)
-                    .font(.system(size: 15, weight: .bold))
+                    .font(AppFont.sf(15, .semibold))   // Figma: SF Pro Semibold 15
                     .foregroundStyle(AppColor.gray900)
                     .lineLimit(1)
 
                 HStack(spacing: 6) {
                     if let subtitle = place.subtitle {
                         Text(subtitle)
-                            .font(.system(size: 12))
+                            .font(AppFont.pretendard(12, .medium))
                             .foregroundStyle(AppColor.gray500)
                             .lineLimit(1)
                     }
                     Spacer(minLength: 4)
                     if let badge = place.badge {
                         Text(badge)
-                            .font(.system(size: 10, weight: .semibold))
+                            .font(AppFont.pretendard(10, .semibold))
                             .foregroundStyle(AppColor.primary)
                             .lineLimit(1)
                             .layoutPriority(1)

@@ -49,7 +49,8 @@ struct MapBottomSheetView: View {
                     selectedSegment = segment
                 } label: {
                     Text(segment.rawValue)
-                        .font(.system(size: 15, weight: selectedSegment == segment ? .bold : .medium))
+                        // Figma: 선택/미선택 모두 SF Pro Semibold 15, 색으로만 구분
+                        .font(AppFont.sf(15, .semibold))
                         .foregroundStyle(
                             selectedSegment == segment
                                 ? AppColor.gray900
@@ -111,7 +112,7 @@ struct MapBottomSheetView: View {
     private var emptyView: some View {
         VStack(spacing: 8) {
             Text("주변 장소를 불러오는 중이에요")
-                .font(.system(size: 14))
+                .font(AppFont.pretendard(14, .medium))
                 .foregroundStyle(AppColor.gray500)
         }
         .frame(maxWidth: .infinity)

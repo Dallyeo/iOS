@@ -60,8 +60,11 @@ struct SearchResultView: View {
     private var searchBar: some View {
         HStack(spacing: 8) {
             Button { dismiss() } label: {
-                Image(systemName: "arrow.backward")
-                    .font(.system(size: 18, weight: .semibold))
+                Image("ic_west")            // 디자인시스템 back/west
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 21, height: 15)
                     .foregroundStyle(AppColor.gray900)
                     .frame(width: 24, height: 24)
             }

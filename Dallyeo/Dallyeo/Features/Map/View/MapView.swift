@@ -87,8 +87,11 @@ struct MapView: View {
         Button {
             onBack?()
         } label: {
-            Image(systemName: "arrow.backward")
-                .font(.system(size: 18, weight: .medium))
+            Image("ic_west")            // 디자인시스템 back/west
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 21, height: 15)
                 .foregroundStyle(AppColor.gray900)
                 .frame(width: 44, height: 44)
                 .background {
@@ -107,12 +110,13 @@ struct MapView: View {
         } label: {
             HStack(spacing: 8) {
                 Text("장소 검색")
-                    .font(.system(size: 16))
+                    .font(AppFont.pretendard(15, .medium))
+                    .tracking(AppFont.tracking(-2, size: 15))
                     .foregroundStyle(AppColor.gray500)
                 Spacer()
                 // 현재 지역 칩 (초록). TODO: 지역 선택/필터 연동
                 Text(viewModel.regionText)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(AppFont.pretendard(15, .semibold))
                     .foregroundStyle(AppColor.white)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 5)

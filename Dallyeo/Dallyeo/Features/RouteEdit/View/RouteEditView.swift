@@ -151,8 +151,10 @@ struct RouteEditView: View {
 
             // 순서 핸들(좌, 상하 chevron) + 액션(우)
             HStack {
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.system(size: 15, weight: .medium))
+                Image("ic_expand_all")     // 디자인시스템 expand_all
+                    .renderingMode(.template)
+                    .resizable()
+                    .frame(width: 24, height: 24)
                     .foregroundStyle(AppColor.gray500)
                 Spacer()
                 switch trailing {
@@ -160,17 +162,19 @@ struct RouteEditView: View {
                     Color.clear.frame(width: 24, height: 24)
                 case .remove(let place):
                     Button { viewModel.removeWaypoint(place) } label: {
-                        Image(systemName: "minus")
-                            .font(.system(size: 18))
-                            .foregroundStyle(AppColor.gray500)
+                        Image("ic_check_indeterminate_small")   // 디자인시스템 경유지 제거
+                            .renderingMode(.template)
+                            .resizable()
                             .frame(width: 24, height: 24)
+                            .foregroundStyle(AppColor.gray500)
                     }
                 case .add:
                     Button { viewModel.addWaypointSlot() } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 18))
-                            .foregroundStyle(viewModel.canAddWaypoint ? AppColor.gray500 : AppColor.gray300)
+                        Image("ic_add")            // 디자인시스템 add
+                            .renderingMode(.template)
+                            .resizable()
                             .frame(width: 24, height: 24)
+                            .foregroundStyle(viewModel.canAddWaypoint ? AppColor.gray500 : AppColor.gray300)
                     }
                     .disabled(!viewModel.canAddWaypoint)
                 }
