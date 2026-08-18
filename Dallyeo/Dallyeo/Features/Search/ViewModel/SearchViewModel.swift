@@ -41,7 +41,7 @@ final class SearchViewModel: NSObject {
 
     /// 위치 칩 텍스트: 현재 지역명. 아직 못 구했으면 기본값.
     var locationChipText: String {
-        currentRegion ?? "군산"
+        currentRegion ?? LocationProvider.shared.displayRegionName
     }
 
     // MARK: - Init

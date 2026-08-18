@@ -17,7 +17,8 @@ final class SearchResultViewModel {
     var isLoading: Bool = false
 
     /// 검색바 지역칩
-    var regionText: String = "군산"
+    /// 지역 칩 텍스트. 공용 위치 제공자에서 읽는다(V03/V04와 동일한 값).
+    var regionText: String { LocationProvider.shared.displayRegionName }
 
     /// 거리순 정렬용 현재 좌표 (V05 진입 시 주입 가능)
     var currentCoordinate: CLLocationCoordinate2D?
