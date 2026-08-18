@@ -217,7 +217,9 @@ extension KakaoMapView {
             // 음식점 전용 마커는 디자인에 없음 → 중립 pin (임의 매핑 안 함)
             addPoiStyle(manager, styleID: "m_place_restaurant", image: asset("marker_pin"), anchor: tip)
             addPoiStyle(manager, styleID: "m_place_convenience", image: asset("marker_convenience"), anchor: tip)
-            addPoiStyle(manager, styleID: "m_current", image: asset("marker_pin"), anchor: tip)
+            // 진행중 현재위치(디자인시스템 822:1145)는 원형이라 중앙 앵커
+            addPoiStyle(manager, styleID: "m_current", image: asset("marker_current"),
+                        anchor: CGPoint(x: 0.5, y: 0.5))
             addPoiStyle(manager, styleID: "m_start", image: asset("marker_start"), anchor: tip)
             addPoiStyle(manager, styleID: "m_dest", image: asset("marker_destination"), anchor: tip)
             for n in 1...5 {

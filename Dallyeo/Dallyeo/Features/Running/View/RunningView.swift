@@ -30,7 +30,7 @@ struct RunningView: View {
                     places: [],
                     followsUser: true,
                     routePolyline: viewModel.course.polyline,
-                    markers: viewModel.course.mapMarkers
+                    markers: viewModel.mapMarkers
                 )
                 RunningMetricsPanel(
                     elapsedText: formatTime(viewModel.elapsedSec),

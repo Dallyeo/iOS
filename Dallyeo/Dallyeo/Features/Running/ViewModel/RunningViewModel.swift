@@ -64,6 +64,23 @@ final class RunningViewModel: NSObject {
         nextTargetIndex < targets.count ? targets[nextTargetIndex] : nil
     }
 
+    /// 지도 마커 = 경유지 + 도착지 + 현재 위치.
+    ///
+    /// **출발지 마커는 그리지 않는다.** 러닝 시작 시점에는 현재 위치가 곧 출발지라
+    /// 두 마커가 같은 자리에 겹쳐 뭉개진다. Figma V09 프레임(609:603)에도 경유 번호와
+    /// 현재위치만 있다. 시작 지점은 경로선으로 이미 드러난다.
+    /// (도착지는 진행 중 목적지 확인용으로 남긴다 — 팀 확인 완료)
+    var mapMarkers: [MapMarker] {
+        var result = course.points
+            .filter { if case .start = $0.role { false } else { true } }
+            .filter(\.hasCoordinate)
+            .map { MapMarker(coordinate: $0.coordinate, kind: $0.markerKind) }
+        if let loc = userLocation {
+            result.append(MapMarker(coordinate: loc, kind: .currentLocation))
+        }
+        return result
+    }
+
     /// 다음 지점 라벨 (경유지 / 도착지)
     var nextTargetLabel: String {
         guard let next = nextTarget else { return "" }
