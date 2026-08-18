@@ -289,14 +289,21 @@ extension KakaoMapView {
 
         /// 역할에 따라 마커 스타일을 고른다.
         /// 초록 `pin`은 "검색/선택한 위치"라는 뜻이라 주변 POI에 쓰면 의미가 어긋난다.
-        private func placeStyleID(for category: PlaceCategory, role: PlaceMarkerRole) -> String {
+        /// 마커 스타일. 해당하는 마커가 없으면 nil — 그리지 않는다.
+        ///
+        /// 디자인시스템 마커는 관광지(분홍) / 편의시설(하늘색) 2종뿐이다.
+        /// **관광지 마커는 관광지 계열(관광지·문화시설·축제)에만 쓴다.**
+        /// 음식점·카페는 전용 마커가 없어 다른 마커를 빌려 쓰지 않고 표시하지 않는다.
+        /// 쇼핑·숙박도 마찬가지. (마커 추가 여부는 PM 확인 대기)
+        private func placeStyleID(for category: PlaceCategory, role: PlaceMarkerRole) -> String? {
             switch role {
             case .searched:
-                return poiStyleID                    // marker_pin (초록)
+                return poiStyleID                    // marker_pin (초록) — 검색/선택한 위치
             case .nearby:
-                // 디자인시스템 마커는 관광지/편의시설 2종뿐이다.
-                // 음식점 전용 마커가 없고 쇼핑·숙박은 지도에 띄우지 않는다(PM 확인 대기).
-                return "m_place_attraction"   // marker_attraction (분홍)
+                switch category.group {
+                case .attraction: return "m_place_attraction"   // marker_attraction (분홍)
+                case .food, .other: return nil
+                }
             }
         }
 
@@ -406,7 +413,9 @@ extension KakaoMapView {
             layer.clearAllItems()
             // 앞쪽(가까운) 장소일수록 rank를 높여 경쟁에서 살아남게 한다.
             for (index, place) in places.enumerated() {
-                let options = PoiOptions(styleID: placeStyleID(for: place.category, role: placeMarkerRole))
+                // 맞는 마커가 없는 카테고리는 건너뛴다(엉뚱한 마커를 빌려 쓰지 않는다)
+                guard let styleID = placeStyleID(for: place.category, role: placeMarkerRole) else { continue }
+                let options = PoiOptions(styleID: styleID)
                 options.rank = Int(max(0, places.count - index))
                 let point = MapPoint(longitude: place.longitude, latitude: place.latitude)
                 let poi = layer.addPoi(option: options, at: point)
