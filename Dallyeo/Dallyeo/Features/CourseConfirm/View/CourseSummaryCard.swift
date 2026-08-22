@@ -14,9 +14,13 @@ struct CourseSummaryCard: View {
     let points: [CoursePoint]
     var onEdit: (() -> Void)?
 
-    // Figma 실측
+    // Figma 실측 (565:828 "실제 구현 목표")
     private let rowHeight: CGFloat = 26
     private let rowSpacing: CGFloat = 20
+    /// 총거리 행 높이. Figma 565:831 = 30 (지점 행 26과 다르다)
+    private let headerRowHeight: CGFloat = 30
+    /// 구분선 아래 ~ 지점 리스트 위. Figma 565:836 y=80 − 헤더 프레임 높이 45
+    private let listTopSpacing: CGFloat = 35
     private let badgeColumnWidth: CGFloat = 26
     private let nameColumnWidth: CGFloat = 200
     private let columnSpacing: CGFloat = 15
@@ -25,7 +29,7 @@ struct CourseSummaryCard: View {
     private let connectorLineWidth: CGFloat = 1
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: listTopSpacing) {
             header
             pointList
         }
@@ -56,7 +60,7 @@ struct CourseSummaryCard: View {
                 }
                 .buttonStyle(.plain)
             }
-            .frame(height: rowHeight)
+            .frame(height: headerRowHeight)
 
             RoundedRectangle(cornerRadius: 3)
                 .fill(AppColor.primary500)
@@ -97,7 +101,9 @@ struct CourseSummaryCard: View {
             }
             .frame(width: nameColumnWidth)
         }
-        .frame(maxWidth: .infinity)   // 카드 안에서 가운데 정렬
+        // Figma는 리스트를 카드 콘텐츠 왼쪽에 붙인다(565:836 x=0).
+        // 가운데 정렬하면 번호열이 35pt쯤 안쪽으로 밀려 들어간다.
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// 첫 행 중심 ~ 마지막 행 중심을 잇는 세로선. 경유지 배지 뒤로 지나간다.
