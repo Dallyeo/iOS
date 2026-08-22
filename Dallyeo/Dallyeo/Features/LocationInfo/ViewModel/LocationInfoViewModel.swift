@@ -30,7 +30,7 @@ final class LocationInfoViewModel {
     // MARK: - 표시 값
 
     var categoryLabel: String {
-        place.category.label
+        place.categoryLabel
     }
 
     /// 영업시간. BE가 `<br>` 태그를 섞어 보내므로 개행으로 치환.

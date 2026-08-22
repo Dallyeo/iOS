@@ -17,6 +17,8 @@ struct KakaoPlace: Sendable {
     let roadAddress: String?
     let coordinate: CLLocationCoordinate2D
     let categoryGroupCode: String?
+    /// 카카오 분류명 ("음식점", "지하철역"…). 우리 분류에 없는 종류를 그대로 보여줄 때 쓴다.
+    let categoryGroupName: String?
     let distance: String?   // 미터(문자열), 좌표 전달 시에만 제공
 }
 
@@ -73,6 +75,7 @@ private struct KakaoKeywordResponse: Decodable {
         let x: String
         let y: String
         let categoryGroupCode: String?
+        let categoryGroupName: String?
         let distance: String?
 
         enum CodingKeys: String, CodingKey {
@@ -81,6 +84,7 @@ private struct KakaoKeywordResponse: Decodable {
             case addressName = "address_name"
             case roadAddressName = "road_address_name"
             case categoryGroupCode = "category_group_code"
+            case categoryGroupName = "category_group_name"
         }
 
         func toPlace() -> KakaoPlace {
@@ -94,6 +98,7 @@ private struct KakaoKeywordResponse: Decodable {
                     longitude: Double(x) ?? 0
                 ),
                 categoryGroupCode: categoryGroupCode,
+                categoryGroupName: categoryGroupName,
                 distance: distance
             )
         }

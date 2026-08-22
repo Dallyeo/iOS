@@ -18,11 +18,17 @@ struct MapPlace: Identifiable, Sendable, Hashable {
     let distance: String?
     var address: String? = nil   // V05 검색결과 등에서 사용
     var subtitle: String? = nil  // "양식 · 수송로" (카테고리 · 지역)
+    /// 우리 분류에 없는 종류일 때 대신 보여줄 이름 (예: 카카오의 "지하철역").
+    /// 있으면 `category.label` 대신 이 값을 쓴다.
+    var categoryLabelOverride: String? = nil
     var badge: String? = nil     // "착한식당" 등 배지
 
     var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
     }
+
+    /// 화면에 표시할 카테고리 이름
+    var categoryLabel: String { categoryLabelOverride ?? category.label }
 }
 
 /// 장소 카테고리. BE(`/places`) 값을 그대로 옮긴다.
@@ -48,6 +54,21 @@ enum PlaceCategory: String, Sendable, CaseIterable {
         case "CAFE":       self = .cafe
         case "STAY":       self = .stay
         default:           self = .tour
+        }
+    }
+
+    /// 카카오 로컬 카테고리 그룹 코드 → 카테고리.
+    /// 우리 분류에 없는 종류(지하철역·은행·병원 등)는 nil을 준다.
+    /// nil이면 카카오가 준 분류명을 그대로 보여준다 — 억지로 관광지로 뭉개지 않는다.
+    static func from(kakaoGroupCode code: String?) -> PlaceCategory? {
+        switch code {
+        case "AT4": .tour        // 관광명소
+        case "CT1": .culture     // 문화시설
+        case "FD6": .restaurant  // 음식점
+        case "CE7": .cafe        // 카페
+        case "AD5": .stay        // 숙박
+        case "MT1", "CS2": .shopping   // 대형마트, 편의점
+        default: nil             // 지하철역/은행/병원/학교/주차장/주유소/공공기관 등
         }
     }
 
