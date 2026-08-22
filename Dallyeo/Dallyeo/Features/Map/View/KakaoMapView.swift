@@ -124,6 +124,9 @@ extension KakaoMapView {
         private var lastRouteSignature = ""
         /// 마지막으로 적용한 경로 진행률(0~1). 전진만 허용한다.
         private var lastProgress: Float = 0
+        /// 위치 갱신 1회당 허용하는 최대 진행률 증가분.
+        /// 위치는 보통 1~5초마다 오므로 코스의 2%면 충분히 넉넉하다.
+        private static let maxProgressStep: Float = 0.02
 
         func setup(container: KMViewContainer) {
             self.container = container
@@ -485,8 +488,14 @@ extension KakaoMapView {
             guard progress.isFinite, progress > 0 else { return }
             // 되돌아가지 않게 전진만. 잔떨림은 무시.
             guard progress > lastProgress + 0.001 else { return }
-            lastProgress = progress
-            route.setProgress(progress: progress, type: .clearFromStart, duration: 300)
+
+            // 한 번에 크게 건너뛰지 않는다.
+            // 경로를 벗어나면 "가장 가까운 경로상의 점"이 한참 앞으로 잡히는데,
+            // 그대로 반영하면 지나지도 않은 구간이 통째로 지워지고 전진만 허용이라
+            // 되돌릴 수도 없다. 갱신 1회당 상한을 둬 튀는 값을 흡수한다.
+            let advanced = min(progress, lastProgress + Self.maxProgressStep)
+            lastProgress = advanced
+            route.setProgress(progress: advanced, type: .clearFromStart, duration: 300)
         }
 
         private static let markerGreen = UIColor(red: 0x13 / 255, green: 0xC6 / 255, blue: 0x74 / 255, alpha: 1)

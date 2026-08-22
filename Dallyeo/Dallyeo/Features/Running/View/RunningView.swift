@@ -33,7 +33,7 @@ struct RunningView: View {
                     markers: viewModel.mapMarkers,
                     heading: viewModel.headingDegrees,
                     // 지나온 구간은 지운다 (내비게이션 방식)
-                    routeProgressPosition: viewModel.userLocation
+                    routeProgressPosition: viewModel.routeProgressPosition
                 )
                 RunningMetricsPanel(
                     elapsedText: formatTime(viewModel.elapsedSec),

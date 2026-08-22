@@ -84,6 +84,20 @@ final class RunningViewModel: NSObject {
         return result
     }
 
+    /// 지나온 구간을 지울 기준 위치.
+    ///
+    /// **경로에서 멀리 벗어나 있으면 nil을 준다.** 벗어난 상태에서는 "경로상 가장 가까운
+    /// 점"이 실제로 지나온 곳과 무관하게 잡혀, 지나지도 않은 구간이 지워진다.
+    /// 다시 경로로 돌아오면 자연스럽게 갱신이 재개된다.
+    var routeProgressPosition: CLLocationCoordinate2D? {
+        guard let loc = userLocation, !course.polyline.isEmpty else { return nil }
+        let nearest = course.polyline.map { Self.distance(loc, $0) }.min() ?? .greatestFiniteMagnitude
+        return nearest <= Self.onRouteThreshold ? loc : nil
+    }
+
+    /// 경로 위에 있다고 볼 거리(m). GPS 오차와 인도/차도 폭을 감안한 값.
+    private static let onRouteThreshold: Double = 50
+
     /// 다음 지점 라벨 (경유지 / 도착지)
     var nextTargetLabel: String {
         guard let next = nextTarget else { return "" }
