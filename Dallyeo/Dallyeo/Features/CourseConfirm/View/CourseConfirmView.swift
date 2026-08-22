@@ -2,124 +2,135 @@
 //  CourseConfirmView.swift
 //  Dallyeo
 //
-//  V08 코스확인뷰 — 지도(경로+주변 마커) + 코스 요약 카드 + 러닝 시작
+//  V08 코스확인뷰 — 지도(경로선 + 지점/주변 마커) + 코스 요약 카드 + 러닝 시작.
+//  Figma 565:523 기준.
 //
 
 import SwiftUI
 
 struct CourseConfirmView: View {
 
-    @Environment(\.dismiss) private var dismiss
     @State private var viewModel: CourseConfirmViewModel
+    /// 하단 패널이 지도를 가리는 높이. 코스 전체 보기 시 이만큼 보정한다.
+    /// (경유지 수에 따라 패널 높이가 달라져 실측이 필요하다)
+    @State private var panelHeight: CGFloat = 0
+    /// 상태바/다이나믹 아일랜드에 마커가 가리지 않도록 확보할 상단 높이
+    @State private var safeAreaTop: CGFloat = 0
     /// "수정" → V07 경로수정으로 복귀
     var onEdit: (() -> Void)?
-    /// "러닝 시작하기" → V09 코스진행 (카운트다운은 V09에서)
-    var onStart: (() -> Void)?
+    /// "러닝 시작하기" → V09 코스진행 (카운트다운은 V09에서).
+    /// 확정된 코스를 그대로 넘겨 V09가 다시 만들지 않게 한다.
+    var onStart: ((RunCourse) -> Void)?
 
+    /// V07에서 만든 코스로 진입
     init(draft: RouteDraft,
          onEdit: (() -> Void)? = nil,
-         onStart: (() -> Void)? = nil) {
+         onStart: ((RunCourse) -> Void)? = nil) {
         _viewModel = State(initialValue: CourseConfirmViewModel(draft: draft))
+        self.onEdit = onEdit
+        self.onStart = onStart
+    }
+
+    /// 추천 코스(BE)로 진입
+    init(courseId: String,
+         onEdit: (() -> Void)? = nil,
+         onStart: ((RunCourse) -> Void)? = nil) {
+        _viewModel = State(initialValue: CourseConfirmViewModel(courseId: courseId))
         self.onEdit = onEdit
         self.onStart = onStart
     }
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            // TODO: 경로 폴리라인(T MAP) + 주변 편의시설/관광지 마커는 백엔드 연동 시 추가
+            AppColor.gray200
+                .ignoresSafeArea()
+
             KakaoMapView(
                 userLocation: nil,
-                places: viewModel.routePlaces,
-                showsPlaceMarkers: true
+                places: viewModel.nearbyPlaces,
+                showsPlaceMarkers: true,
+                placeMarkerRole: .nearby,
+                routePolyline: viewModel.routePolyline,
+                markers: viewModel.mapMarkers,
+                // 패널 높이를 재기 전에는 맞춤을 미룬다 (카메라 맞춤은 1회성이라 선반영 필요)
+                fitCoordinates: panelHeight > 0 ? viewModel.boundsCoordinates : [],
+                fitBottomInset: panelHeight,
+                fitTopInset: safeAreaTop
             )
             .ignoresSafeArea()
 
-            summaryCard
+            bottomPanel
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
+                    panelHeight = $0
+                }
+        }
+        .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: {
+            safeAreaTop = $0
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
+        .task { await viewModel.load() }
     }
 
-    // MARK: - 코스 요약 카드
+    // MARK: - 하단 패널 (grabber + 카드 + 시작 버튼)
 
-    private var summaryCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // 수정 칩 + 총 거리
-            HStack {
-                Button { onEdit?() } label: {
-                    Text("수정")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(AppColor.primary)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 6)
-                        .background(
-                            Capsule().stroke(AppColor.primary, lineWidth: 1.5)
-                        )
-                }
-                Spacer()
-                Text(viewModel.totalDistanceText)
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(AppColor.gray900)
-            }
+    private var bottomPanel: some View {
+        VStack(spacing: 10) {
+            Capsule()
+                .fill(AppColor.grabber)
+                .frame(width: 50, height: 5)
 
-            Rectangle()
-                .fill(AppColor.primary)
-                .frame(height: 2)
+            content
 
-            // 코스 지점 리스트
-            VStack(alignment: .leading, spacing: 10) {
-                pointRow(label: "출발지", name: viewModel.startName, emphasized: true)
-                ForEach(Array(viewModel.waypointNames.enumerated()), id: \.offset) { idx, name in
-                    waypointRow(index: idx + 1, name: name)
-                }
-                pointRow(label: "도착지", name: viewModel.destinationName, emphasized: true)
-            }
-
-            Button { onStart?() } label: {
-                Text("러닝 시작하기")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundStyle(AppColor.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(AppColor.primary, in: RoundedRectangle(cornerRadius: 12))
-            }
+            startButton
         }
-        .padding(20)
+        .padding(.top, 10)
+        .padding(.bottom, 32)
+        .frame(maxWidth: .infinity)
         .background(
-            UnevenRoundedRectangle(topLeadingRadius: 20, topTrailingRadius: 20)
-                .fill(AppColor.white)
+            UnevenRoundedRectangle(topLeadingRadius: 8, topTrailingRadius: 8)
+                .fill(AppColor.whiteDim)
                 .ignoresSafeArea(edges: .bottom)
-                .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: -2)
+                .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: -4)
         )
     }
 
-    // 출발지 / 도착지 행
-    private func pointRow(label: String, name: String, emphasized: Bool) -> some View {
-        HStack(spacing: 8) {
-            Text(label)
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(AppColor.gray900)
-            Text("-")
-                .foregroundStyle(AppColor.gray500)
-            Text(name)
-                .font(.system(size: 14, weight: emphasized ? .semibold : .regular))
-                .foregroundStyle(AppColor.gray900)
+    @ViewBuilder
+    private var content: some View {
+        if viewModel.isLoading {
+            ProgressView()
+                .frame(width: 370, height: 200)
+        } else if viewModel.loadFailed {
+            VStack(spacing: 12) {
+                Text("코스를 불러오지 못했어요.")
+                    .font(AppFont.pretendard(15, .medium))
+                    .foregroundStyle(AppColor.gray500)
+                Button("다시 시도") {
+                    Task { await viewModel.load() }
+                }
+                .font(AppFont.pretendard(15, .semibold))
+                .foregroundStyle(AppColor.primary)
+            }
+            .frame(width: 370, height: 200)
+        } else {
+            CourseSummaryCard(
+                distanceText: viewModel.totalDistanceText,
+                points: viewModel.points,
+                onEdit: onEdit
+            )
         }
     }
 
-    // 경유지 행 (불릿 + 들여쓰기)
-    private func waypointRow(index: Int, name: String) -> some View {
-        HStack(spacing: 6) {
-            Text("•")
-                .foregroundStyle(AppColor.gray500)
-            Text("경유지 \(index)")
-                .font(.system(size: 13))
-                .foregroundStyle(AppColor.gray500)
-            Text(name)
-                .font(.system(size: 13))
-                .foregroundStyle(AppColor.gray700)
-            Spacer()
+    private var startButton: some View {
+        Button { if let course = viewModel.course { onStart?(course) } } label: {
+            Text("러닝 시작하기")
+                .font(AppFont.pretendard(17, .semibold))
+                .foregroundStyle(AppColor.white)
+                .frame(width: 370, height: 59)
+                .background(AppColor.primary, in: RoundedRectangle(cornerRadius: 8))
         }
-        .padding(.leading, 8)
+        .buttonStyle(.plain)
+        .disabled(viewModel.course == nil)
+        .opacity(viewModel.course == nil ? 0.5 : 1)
     }
 }

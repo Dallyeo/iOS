@@ -21,7 +21,8 @@ final class SearchViewModel: NSObject {
 
     // 위치 칩
     var locationAuthStatus: CLAuthorizationStatus = .notDetermined
-    var currentAddress: String?                // 역지오코딩 결과 (예: "군산시 내흥2길")
+    var currentRegion: String?                 // 짧은 지역명 (예: "군산", "서울")
+    var currentCoordinate: CLLocationCoordinate2D?   // 검색 거리순 정렬용
 
     // MARK: - 위치
 
@@ -38,9 +39,9 @@ final class SearchViewModel: NSObject {
     /// 타이핑 중이면 유사검색어, 아니면 최근검색 노출
     var isTyping: Bool { canSearch }
 
-    /// 위치 칩 텍스트: 권한+위치 있으면 현재 주소, 아니면 권한 안내
+    /// 위치 칩 텍스트: 현재 지역명. 아직 못 구했으면 기본값.
     var locationChipText: String {
-        currentAddress ?? "위치 권한 허용"
+        currentRegion ?? LocationProvider.shared.displayRegionName
     }
 
     // MARK: - Init
@@ -89,11 +90,12 @@ final class SearchViewModel: NSObject {
             location, preferredLocale: Locale(identifier: "ko_KR")
         ) { [weak self] placemarks, _ in
             guard let placemark = placemarks?.first else { return }
-            // "군산시 내흥2길" = locality + thoroughfare
-            let parts = [placemark.locality, placemark.thoroughfare].compactMap { $0 }
-            let address = parts.isEmpty ? placemark.name : parts.joined(separator: " ")
+            let region = RegionName.short(
+                admin: placemark.administrativeArea,
+                locality: placemark.locality
+            )
             Task { @MainActor in
-                self?.currentAddress = address
+                self?.currentRegion = region
             }
         }
     }
@@ -137,15 +139,24 @@ final class SearchViewModel: NSObject {
         return term
     }
 
-    // MARK: - 유사 검색어 (TODO: 백엔드 TourAPI 키워드 검색 프록시 연동)
+    // MARK: - 유사 검색어 (카카오 키워드 검색 직접 호출)
 
     func updateSuggestions() async {
-        guard canSearch else {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else {
             suggestions = []
             return
         }
-        // TODO: 백엔드 프록시(/search?keyword=) 호출 → suggestions 채우기
-        suggestions = []
+        do {
+            let places = try await KakaoLocalService.searchKeyword(q, near: currentCoordinate, size: 15)
+            // 응답 지연 사이 검색어가 바뀌었으면 무시
+            guard q == query.trimmingCharacters(in: .whitespaces) else { return }
+            suggestions = places.map {
+                SearchSuggestion(id: $0.id, name: $0.name, address: $0.roadAddress ?? $0.address)
+            }
+        } catch {
+            suggestions = []
+        }
     }
 }
 
@@ -156,6 +167,7 @@ extension SearchViewModel: CLLocationManagerDelegate {
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
         Task { @MainActor in
+            self.currentCoordinate = location.coordinate
             self.reverseGeocode(location)
         }
     }

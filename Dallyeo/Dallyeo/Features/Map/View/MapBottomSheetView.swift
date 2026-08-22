@@ -12,10 +12,12 @@ struct MapBottomSheetView: View {
     @Binding var selectedSegment: MapViewModel.PlaceSegment
     let places: [MapPlace]
     let isLoading: Bool
+    /// 카드 탭 → V06 위치정보뷰 진입
+    var onSelectPlace: ((MapPlace) -> Void)?
 
     private let columns = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12)
+        GridItem(.flexible(), spacing: 16),
+        GridItem(.flexible(), spacing: 16)
     ]
 
     var body: some View {
@@ -23,8 +25,8 @@ struct MapBottomSheetView: View {
             // 세그먼트
             segmentControl
                 .padding(.horizontal, 16)
-                .padding(.top, 24)
-                .padding(.bottom, 12)
+                .padding(.top, 23)
+                .padding(.bottom, 24)   // Figma 컨테이너 gap 24
 
             // 장소 그리드
             if isLoading {
@@ -47,14 +49,15 @@ struct MapBottomSheetView: View {
                     selectedSegment = segment
                 } label: {
                     Text(segment.rawValue)
-                        .font(.system(size: 15, weight: selectedSegment == segment ? .bold : .medium))
+                        // Figma: 선택/미선택 모두 SF Pro Semibold 15, 색으로만 구분
+                        .font(AppFont.sf(15, .semibold))
                         .foregroundStyle(
                             selectedSegment == segment
                                 ? AppColor.gray900
                                 : AppColor.gray500
                         )
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
+                        .padding(.vertical, 12)   // Figma 세그먼트 높이 51
                         .background {
                             if selectedSegment == segment {
                                 RoundedRectangle(cornerRadius: 8)
@@ -73,12 +76,19 @@ struct MapBottomSheetView: View {
 
     private var placeGrid: some View {
         ScrollView {
-            LazyVGrid(columns: columns, spacing: 16) {
+            LazyVGrid(columns: columns, spacing: 24) {   // Figma 행 간격 24
                 ForEach(places) { place in
-                    PlaceCardView(place: place)
+                    Button {
+                        onSelectPlace?(place)
+                    } label: {
+                        PlaceCardView(place: place)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
-            .padding(16)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 16)
+            // 상단은 세그먼트 하단 여백(24)이 담당 → 카드 top padding 없음
         }
     }
 
@@ -102,7 +112,7 @@ struct MapBottomSheetView: View {
     private var emptyView: some View {
         VStack(spacing: 8) {
             Text("주변 장소를 불러오는 중이에요")
-                .font(.system(size: 14))
+                .font(AppFont.pretendard(14, .medium))
                 .foregroundStyle(AppColor.gray500)
         }
         .frame(maxWidth: .infinity)

@@ -71,8 +71,8 @@ enum BridgeMethod: String, CaseIterable, Sendable {
     // 단방향
     case openCourseSearch
     case openCourseConfirm
+    case startRun
     // 향후 예약 (지금 호출 안 함)
-    // case startRun
     // case openOSSettings
     // case pickProfilePhoto
     // case share

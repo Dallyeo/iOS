@@ -35,6 +35,23 @@ final class RouteEditViewModel {
         orderedPlaces.filter { $0.latitude != 0 && $0.longitude != 0 }
     }
 
+    /// 종류별 지도 마커 (출발=A / 경유=번호 / 도착=깃발). 빈 좌표 제외.
+    var mapMarkers: [MapMarker] {
+        var result: [MapMarker] = []
+        if let s = draft.start, s.latitude != 0 || s.longitude != 0 {
+            result.append(MapMarker(coordinate: s.coordinate, kind: .start))
+        }
+        var n = 1
+        for wp in draft.waypoints where wp.latitude != 0 || wp.longitude != 0 {
+            result.append(MapMarker(coordinate: wp.coordinate, kind: .waypoint(n)))
+            n += 1
+        }
+        if let d = draft.destination, d.latitude != 0 || d.longitude != 0 {
+            result.append(MapMarker(coordinate: d.coordinate, kind: .destination))
+        }
+        return result
+    }
+
     // MARK: - 검증 (스펙)
 
     /// 출발지·도착지 모두 설정돼야 확인 가능
@@ -53,7 +70,7 @@ final class RouteEditViewModel {
         guard canAddWaypoint else { return }
         // 빈 경유지 칸 추가 (placeholder). 실제 장소는 검색으로 채움(TODO)
         draft.waypoints.append(
-            MapPlace(id: UUID().uuidString, name: "", category: .attraction,
+            MapPlace(id: UUID().uuidString, name: "", category: .tour,
                      latitude: 0, longitude: 0, thumbnailURL: nil, distance: nil)
         )
     }
@@ -66,13 +83,59 @@ final class RouteEditViewModel {
         draft.waypoints.move(fromOffsets: source, toOffset: destinationIndex)
     }
 
-    // MARK: - 총 거리 (TODO: T MAP 보행자 경로 API — 백엔드 프록시. 현재는 직선 합 stub)
+    // MARK: - T MAP 보행자 경로
 
-    /// 빈 경유지(좌표 0)는 무시하고 직선 거리 합산 (km)
-    var totalDistanceKm: Double {
-        let coords = orderedPlaces
+    /// T MAP 도보경로 폴리라인 (지도 렌더용). 실패/미계산 시 빈 배열.
+    /// 저장소는 `draft` — V08/V09가 같은 경로를 이어받아야 하므로 ViewModel에 두지 않는다.
+    var routePolyline: [CLLocationCoordinate2D] {
+        get { draft.routePolyline }
+        set { draft.routePolyline = newValue }
+    }
+    /// T MAP 실거리(m). 못 구하면 nil → 직선거리로 폴백.
+    var routeMeters: Int? {
+        get { draft.routeMeters }
+        set { draft.routeMeters = newValue }
+    }
+    var isRouting = false
+
+    /// 유효 지점 좌표(빈 경유지 제외)
+    private var validCoords: [CLLocationCoordinate2D] {
+        orderedPlaces
             .filter { $0.latitude != 0 && $0.longitude != 0 }
             .map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
+    }
+
+    /// 지점 구성 변경 감지용 시그니처 (좌표 나열)
+    var routeSignature: String {
+        validCoords.map { "\($0.latitude),\($0.longitude)" }.joined(separator: "|")
+    }
+
+    /// T MAP 보행자 경로 재계산 (지점 2개 이상일 때). 실패 시 직선거리로 폴백.
+    func recalculateRoute() async {
+        let coords = validCoords
+        guard coords.count >= 2 else {
+            routePolyline = []; routeMeters = nil; return
+        }
+        let start = coords.first!
+        let end = coords.last!
+        let mids = Array(coords.dropFirst().dropLast())
+        guard mids.count <= TMapService.maxPassPoints else { return }
+
+        isRouting = true
+        defer { isRouting = false }
+        do {
+            let route = try await TMapService.pedestrianRoute(start: start, waypoints: mids, destination: end)
+            routePolyline = route.polyline
+            routeMeters = route.totalMeters
+        } catch {
+            routePolyline = []
+            routeMeters = nil   // 직선거리 폴백
+        }
+    }
+
+    /// 직선 거리 합산 (km) — T MAP 실패 시 폴백
+    var straightDistanceKm: Double {
+        let coords = validCoords
         guard coords.count >= 2 else { return 0 }
         var meters: Double = 0
         for i in 1..<coords.count {
@@ -81,8 +144,13 @@ final class RouteEditViewModel {
         return meters / 1000
     }
 
+    /// 표시용 총거리. T MAP 실거리 우선, 없으면 직선거리.
+    /// 포맷은 V08/V09와 공유 — `DistanceFormat` 참조.
     var totalDistanceText: String {
-        String(format: "%.1fkm", totalDistanceKm)
+        if let m = routeMeters {
+            return DistanceFormat.km(meters: m)
+        }
+        return DistanceFormat.km(meters: straightDistanceKm * 1000)
     }
 
     private static func haversine(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> Double {

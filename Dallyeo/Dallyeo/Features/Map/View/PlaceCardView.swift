@@ -14,39 +14,44 @@ struct PlaceCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // 썸네일 (177×173 ≈ 정사각) — 실제 사진은 백엔드 thumbnailURL
-            thumbnail
+            // 고정 비율 박스 + 오버레이 + 클립 (scaledToFill 오버플로우 방지)
+            Rectangle()
+                .fill(AppColor.gray300)
                 .aspectRatio(177.0 / 173.0, contentMode: .fit)
-                .frame(maxWidth: .infinity)
+                .overlay { thumbnail }
                 .clipped()
 
             // 텍스트 영역 (padding 14)
             VStack(alignment: .leading, spacing: 6) {
                 Text(place.name)
-                    .font(.system(size: 15, weight: .bold))
+                    .font(AppFont.sf(15, .semibold))   // Figma: SF Pro Semibold 15
                     .foregroundStyle(AppColor.gray900)
                     .lineLimit(1)
 
                 HStack(spacing: 6) {
                     if let subtitle = place.subtitle {
                         Text(subtitle)
-                            .font(.system(size: 12))
+                            .font(AppFont.pretendard(12, .medium))
                             .foregroundStyle(AppColor.gray500)
                             .lineLimit(1)
                     }
                     Spacer(minLength: 4)
                     if let badge = place.badge {
                         Text(badge)
-                            .font(.system(size: 10, weight: .semibold))
+                            .font(AppFont.pretendard(10, .semibold))
                             .foregroundStyle(AppColor.primary)
-                            .padding(.horizontal, 16)
+                            .lineLimit(1)
+                            .layoutPriority(1)
+                            .padding(.horizontal, 6)
                             .padding(.vertical, 5)
-                            // Figma 배지 배경 #C6F3DF
                             .background(
-                                Color(red: 198 / 255, green: 243 / 255, blue: 223 / 255),
+                                AppColor.primary200,   // P_200
                                 in: RoundedRectangle(cornerRadius: 8)
                             )
                     }
                 }
+                // 배지 유무와 무관하게 행 높이 고정 → 카드 높이 통일
+                .frame(minHeight: 24)
             }
             .padding(.horizontal, 14)
             .padding(.top, 10)

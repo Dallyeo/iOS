@@ -12,6 +12,7 @@ struct SearchResultView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel: SearchResultViewModel
     @FocusState private var fieldFocused: Bool
+    @State private var sheetDetent: PresentationDetent = .medium
 
     /// 네비게이션 최상단일 때만 바텀시트 표시 (push된 화면 위 시트 충돌 방지)
     var bottomSheetVisible: Bool = true
@@ -40,7 +41,10 @@ struct SearchResultView: View {
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: .constant(bottomSheetVisible)) {
             resultSheet
-                .presentationDetents([.height(120), .medium, .large])
+                // 기본을 medium으로 연다. 최소(120pt)로 열면 카드가 거의 가려지고
+                // 남은 영역이 시트 드래그 영역과 겹쳐, 결과를 눌러도 선택이 아니라
+                // 시트 확장으로 먹힌다. Figma(542:925)도 절반쯤 열린 상태가 기본.
+                .presentationDetents([.height(120), .medium, .large], selection: $sheetDetent)
                 .presentationDragIndicator(.visible)
                 .presentationBackground(AppColor.white)
                 .presentationBackgroundInteraction(.enabled(upThrough: .large))
@@ -56,8 +60,11 @@ struct SearchResultView: View {
     private var searchBar: some View {
         HStack(spacing: 8) {
             Button { dismiss() } label: {
-                Image(systemName: "arrow.backward")
-                    .font(.system(size: 18, weight: .semibold))
+                Image("ic_west")            // 디자인시스템 back/west
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 21, height: 15)
                     .foregroundStyle(AppColor.gray900)
                     .frame(width: 24, height: 24)
             }
@@ -71,6 +78,14 @@ struct SearchResultView: View {
                     .autocorrectionDisabled()
                     .onSubmit { Task { await viewModel.search() } }
 
+                // 현재 지역 칩 (초록)
+                Text(viewModel.regionText)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(AppColor.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 5)
+                    .background(AppColor.primary, in: RoundedRectangle(cornerRadius: 8))
+
                 if !viewModel.query.isEmpty {
                     Button { viewModel.query = "" } label: {
                         Image(systemName: "xmark")
@@ -79,8 +94,9 @@ struct SearchResultView: View {
                     }
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.leading, 16)
+            .padding(.trailing, 8)
+            .padding(.vertical, 8)
             .background(AppColor.white, in: RoundedRectangle(cornerRadius: 10))
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
@@ -92,48 +108,54 @@ struct SearchResultView: View {
     // MARK: - 결과 바텀시트
 
     private var resultSheet: some View {
-        ScrollView {
-            LazyVStack(spacing: 12) {
-                ForEach(viewModel.results) { place in
-                    Button { onSelectPlace?(place) } label: {
-                        resultRow(place)
-                    }
-                }
+        Group {
+            if viewModel.results.isEmpty {
+                noResultView
+            } else {
+                resultList
             }
-            .padding(16)
         }
         .background(AppColor.white)
     }
 
-    private func resultRow(_ place: MapPlace) -> some View {
-        HStack(spacing: 12) {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(AppColor.gray300)
-                .frame(width: 56, height: 56)
-                .overlay {
-                    if let urlString = place.thumbnailURL, let url = URL(string: urlString) {
-                        AsyncImage(url: url) { $0.resizable().scaledToFill() } placeholder: { Color.clear }
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
+    /// 검색 결과 없음 (Figma 822:4998 V05_empty2)
+    private var noResultView: some View {
+        VStack(spacing: 15) {
+            Image("ic_no_result")
+                .renderingMode(.template)
+                .resizable()
+                .frame(width: 24, height: 24)
+                .foregroundStyle(AppColor.gray300)
+            Text("장소를 찾을 수 없어요")
+                .font(AppFont.pretendard(15, .medium))
+                .tracking(AppFont.tracking(-2, size: 15))
+                .foregroundStyle(AppColor.disabled)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var resultList: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 10) {
+                ForEach(Array(viewModel.results.enumerated()), id: \.element.id) { index, place in
+                    Button { onSelectPlace?(place) } label: {
+                        PlaceSummaryCard(data: viewModel.cardData(for: place))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+
+                    // 카드 사이 구분선 (0.5pt, #B8B8B8)
+                    if index < viewModel.results.count - 1 {
+                        Rectangle()
+                            .fill(AppColor.disabled)
+                            .frame(height: 0.5)
                     }
                 }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(place.name)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(AppColor.gray900)
-                    .lineLimit(1)
-                if let address = place.address {
-                    Text(address)
-                        .font(.system(size: 12))
-                        .foregroundStyle(AppColor.gray500)
-                        .lineLimit(1)
-                }
             }
-            Spacer(minLength: 0)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 16)
         }
-        .padding(.horizontal, 17)
-        .padding(.vertical, 9)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(AppColor.gray200, in: RoundedRectangle(cornerRadius: 8))
+        .background(AppColor.white)
     }
 }

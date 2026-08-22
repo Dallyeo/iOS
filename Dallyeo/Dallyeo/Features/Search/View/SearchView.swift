@@ -19,11 +19,9 @@ struct SearchView: View {
     var body: some View {
         VStack(spacing: 0) {
             searchBar
-            locationChip
-                .padding(.top, 8)
-                .padding(.bottom, 4)
+                .padding(.bottom, 8)
             content
-            Spacer(minLength: 0)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(AppColor.gray200)
         .navigationBarBackButtonHidden(true)
@@ -39,15 +37,18 @@ struct SearchView: View {
     private var searchBar: some View {
         HStack(spacing: 8) {
             Button { dismiss() } label: {
-                Image(systemName: "arrow.backward")
-                    .font(.system(size: 18, weight: .semibold))
+                Image("ic_west")            // 디자인시스템 back/west
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 21, height: 15)
                     .foregroundStyle(AppColor.gray900)
-                    .frame(width: 24, height: 24)
+                    .frame(width: 40, height: 44)
             }
 
             HStack(spacing: 8) {
                 TextField("장소 검색", text: $viewModel.query)
-                    .font(.system(size: 16))
+                    .font(AppFont.pretendard(15, .medium))
                     .foregroundStyle(AppColor.gray900)
                     .focused($fieldFocused)
                     .submitLabel(.search)
@@ -57,44 +58,23 @@ struct SearchView: View {
                         Task { await viewModel.updateSuggestions() }
                     }
 
-                Button(action: submit) {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundStyle(viewModel.canSearch ? AppColor.gray900 : AppColor.gray300)
+                // 지역 칩 (V03과 동일). TODO: 지역 선택/필터 연동
+                Button { viewModel.handleLocationChipTap() } label: {
+                    Text(viewModel.locationChipText)
+                        .font(AppFont.pretendard(15, .semibold))
+                        .foregroundStyle(AppColor.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 5)
+                        .background(AppColor.primary, in: RoundedRectangle(cornerRadius: 8))
                 }
-                .disabled(!viewModel.canSearch)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
+            .padding(.leading, 16)
+            .padding(.trailing, 6)
+            .frame(height: 50)
             .background(AppColor.white, in: RoundedRectangle(cornerRadius: 10))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(AppColor.gray300, lineWidth: 1)
-            )
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)
-    }
-
-    // MARK: - 위치칩
-
-    private var locationChip: some View {
-        HStack {
-            Spacer()
-            Button {
-                viewModel.handleLocationChipTap()
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "location.north.circle.fill")
-                        .font(.system(size: 14))
-                        .symbolRenderingMode(.palette)
-                        .foregroundStyle(.white, AppColor.primary)
-                    Text(viewModel.locationChipText)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(AppColor.primary)
-                }
-            }
-        }
-        .padding(.horizontal, 16)
     }
 
     // MARK: - 본문 (유사검색어 / 최근검색 / 빈 상태)
@@ -118,11 +98,16 @@ struct SearchView: View {
                         let t = viewModel.reuse(term)
                         onSubmit?(t)
                     } label: {
-                        HStack {
+                        HStack(spacing: 12) {
                             Text(term)
-                                .font(.system(size: 16))
-                                .foregroundStyle(AppColor.gray900)
+                                .font(AppFont.pretendard(14, .regular))
+                                .foregroundStyle(AppColor.gray700)
                             Spacer()
+                            if let date = RecentSearchStore.date(for: term) {
+                                Text(date)
+                                    .font(AppFont.pretendard(14, .regular))
+                                    .foregroundStyle(AppColor.gray700)
+                            }
                             Button {
                                 viewModel.removeRecent(term)
                             } label: {
@@ -151,11 +136,11 @@ struct SearchView: View {
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(suggestion.name)
-                                .font(.system(size: 16))
+                                .font(AppFont.pretendard(16, .regular))
                                 .foregroundStyle(AppColor.gray900)
                             if let address = suggestion.address {
                                 Text(address)
-                                    .font(.system(size: 12))
+                                    .font(AppFont.pretendard(12, .medium))
                                     .foregroundStyle(AppColor.gray500)
                             }
                         }
@@ -170,15 +155,16 @@ struct SearchView: View {
 
     private var emptyRecent: some View {
         VStack(spacing: 12) {
-            Image(systemName: "ellipsis.message.fill")
-                .font(.system(size: 40))
+            Image("ic_no_result")      // 디자인시스템 quick_reference_all
+                .renderingMode(.template)
+                .resizable()
+                .frame(width: 24, height: 24)
                 .foregroundStyle(AppColor.gray300)
-            Text("최근 검색한 기록이 없어요")
-                .font(.system(size: 14))
+            Text("최근 검색 기록이 없어요")
+                .font(AppFont.pretendard(14, .medium))
                 .foregroundStyle(AppColor.gray500)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 80)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - Actions

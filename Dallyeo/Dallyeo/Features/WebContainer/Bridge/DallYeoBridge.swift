@@ -9,6 +9,7 @@ import Foundation
 import WebKit
 import UIKit
 import OSLog
+import CoreLocation
 
 @MainActor
 final class DallYeoBridge: NSObject, WKScriptMessageHandler {
@@ -79,8 +80,51 @@ final class DallYeoBridge: NSObject, WKScriptMessageHandler {
             coordinator?.openCourseSearch()   // 단방향, 응답 없음
 
         case .openCourseConfirm:
-            coordinator?.openCourseConfirm()  // 단방향, 응답 없음
+            coordinator?.openCourseConfirm(courseId: Self.courseId(from: params))
+
+        case .startRun:
+            // 코스 id가 없으면 어떤 코스를 뛸지 알 수 없다 → 무시
+            guard let id = Self.courseId(from: params) else { return }
+            coordinator?.startRun(courseId: id)
         }
+    }
+
+    /// 웹이 넘긴 course 객체에서 id를 꺼낸다.
+    /// `{course: {id: "..."}}` / `{courseId: "..."}` / `{course: "..."}` 모두 받아 준다.
+    /// (FE 페이로드 형태가 확정되기 전이라 흔한 형태를 모두 수용)
+    private static func courseId(from params: [String: Any]?) -> String? {
+        guard let params else { return nil }
+        if let id = params["courseId"] as? String { return id }
+        if let course = params["course"] as? [String: Any] {
+            return course["id"] as? String
+        }
+        if let id = params["course"] as? String { return id }
+        return nil
+    }
+
+    // MARK: - Native → Web 이벤트
+
+    /// 러닝 완료 → 웹 V10 완주 결과뷰로 결과 전달.
+    ///
+    /// 웹은 페이로드를 검증한 뒤에만 결과 화면으로 이동한다:
+    /// `runId: string`, `distanceKm: number`, `completionRate: number`가 모두 있어야 한다.
+    /// (배포 번들에서 확인 — 하나라도 없으면 이벤트를 조용히 버린다)
+    /// runId는 아직 BE 기록 저장이 없어 클라이언트에서 생성한다.
+    func emitRunCompleted(_ result: RunResult) {
+        emit("runCompleted", payload: [
+            "runId": UUID().uuidString,
+            "distanceKm": result.distanceKm,
+            "durationSec": result.durationSec,
+            "paceSecPerKm": result.paceSecPerKm,
+            "calories": result.calories,
+            "completionRate": result.completionRate,
+            "polyline": result.traveledPath.map { ["lat": $0.latitude, "lng": $0.longitude] }
+        ])
+    }
+
+    /// 러닝을 결과 없이 빠져나감
+    func emitRunCancelled() {
+        emit("runCancelled", payload: [:])
     }
 
     // MARK: - Login/Logout

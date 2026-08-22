@@ -6,19 +6,28 @@
 //
 
 import SwiftUI
+import CoreLocation
 
 @MainActor
 @Observable
 final class RouteDraft {
 
     var start: MapPlace?
-    var waypoints: [MapPlace] = []   // 최대 3개
+    var waypoints: [MapPlace] = []   // 최대 maxWaypoints개
     var destination: MapPlace?
+
+    /// T MAP 보행자 경로 폴리라인. V07에서 계산해 여기 저장 → V08/V09가 이어받는다.
+    /// (ViewModel에만 두면 화면 전환 시 유실되므로 draft가 보관)
+    var routePolyline: [CLLocationCoordinate2D] = []
+    /// T MAP 실거리(m). 못 구하면 nil → 직선거리 폴백.
+    var routeMeters: Int?
 
     /// 현재 검색으로 채우려는 지점 슬롯 (V07 행 탭 → 검색 → 결과 선택 시 이 슬롯에 할당)
     var editingSlot: EditSlot?
 
-    static let maxWaypoints = 3
+    /// 경유지 최대 개수. Figma HiFi(경유 5개 프레임) 기준 5.
+    /// ※ CLAUDE.md에는 "최대 3개"로 적혀 있어 문서와 충돌 — 팀 확인 필요(현재는 HiFi 우선).
+    static let maxWaypoints = 5
 
     enum EditSlot: Equatable {
         case start
@@ -45,7 +54,7 @@ final class RouteDraft {
         MapPlace(
             id: "current",
             name: "현재 위치",
-            category: .attraction,
+            category: .tour,
             latitude: coordinate?.lat ?? 0,
             longitude: coordinate?.lng ?? 0,
             thumbnailURL: nil,

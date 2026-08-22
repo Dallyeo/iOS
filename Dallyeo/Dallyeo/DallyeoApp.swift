@@ -25,15 +25,8 @@ struct DallyeoApp: App {
 
     var body: some Scene {
         WindowGroup {
-            // 진입점 = 웹뷰 컨테이너 (FE V01 온보딩 / V02 메인).
-            // 네이티브 화면(V03~V09)은 브릿지 호출로 오버레이 진입.
+            // 앱 진입점 = 웹 컨테이너. 웹(V01/V02/V10~) 위에 네이티브(V03~V09)를 얹는다.
             WebContainerView(coordinator: AppCoordinator())
-                .onOpenURL { url in
-                    // 카카오톡 로그인 콜백 처리
-                    if AuthApi.isKakaoTalkLoginUrl(url) {
-                        _ = AuthController.handleOpenUrl(url: url)
-                    }
-                }
         }
     }
 }

@@ -34,29 +34,62 @@ struct RouteEditView: View {
                         .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 4)
                 )
 
-            // 하단: 지도 (바닥까지 꽉 차게)
-            // TODO: 거리 말풍선은 T MAP 경로 폴리라인과 함께 경로 위에 표시
+            // 하단: 지도 (바닥까지 꽉 차게) + T MAP 경로선 + 총거리 칩
             KakaoMapView(
                 userLocation: nil,
-                places: viewModel.markerPlaces,
-                showsPlaceMarkers: true
+                places: [],
+                routePolyline: viewModel.routePolyline,
+                markers: viewModel.mapMarkers,
+                // 경로 전체가 보이도록 카메라를 맞춘다. 지점이 바뀌면 다시 맞춰진다.
+                // (경로 계산 전에는 지점 좌표로라도 맞춘다)
+                fitCoordinates: viewModel.routePolyline.isEmpty
+                    ? viewModel.mapMarkers.map(\.coordinate)
+                    : viewModel.routePolyline,
+                fitTopInset: 56   // 총거리 칩이 가리는 높이
             )
             .ignoresSafeArea(edges: .bottom)
+            .overlay(alignment: .top) {
+                if viewModel.mapMarkers.count >= 2 {
+                    distanceChip
+                        .padding(.top, 12)
+                }
+            }
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
+        // 지점 구성이 바뀔 때마다 T MAP 보행자 경로 재계산
+        .task(id: viewModel.routeSignature) {
+            await viewModel.recalculateRoute()
+        }
+    }
+
+    /// 총 거리 말풍선(칩) — T MAP 실거리(없으면 직선거리)
+    private var distanceChip: some View {
+        HStack(spacing: 6) {
+            if viewModel.isRouting {
+                ProgressView().scaleEffect(0.7)
+            }
+            Text(viewModel.totalDistanceText)
+                .font(AppFont.pretendard(14, .semibold))
+                .foregroundStyle(AppColor.white)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(AppColor.primary, in: Capsule())
+        .shadow(color: .black.opacity(0.15), radius: 3, y: 2)
     }
 
     // MARK: - 편집 패널
 
     private var editPanel: some View {
         VStack(spacing: 0) {
-            pointRow(name: viewModel.start?.name, placeholder: "출발지 설정",
+            pointRow(role: .start, name: viewModel.start?.name, placeholder: "출발지 설정",
                      trailing: .none, slot: .start)
             Divider()
 
             ForEach(viewModel.waypoints) { wp in
                 pointRow(
+                    role: .waypoint,
                     name: wp.name.isEmpty ? nil : wp.name,
                     placeholder: "경유지 설정",
                     trailing: .remove(wp),
@@ -66,26 +99,36 @@ struct RouteEditView: View {
             }
 
             // 도착지 행 + 경유지 추가(+)
-            pointRow(name: viewModel.destination?.name, placeholder: "도착지 설정",
+            pointRow(role: .destination, name: viewModel.destination?.name, placeholder: "도착지 설정",
                      trailing: .add, slot: .destination)
-            Divider()
 
-            HStack(spacing: 0) {
-                Button("취소") { dismiss() }
-                    .frame(maxWidth: .infinity)
-                    .foregroundStyle(AppColor.gray700)
-                Button("확인") {
-                    onConfirm?()
-                }
-                .frame(maxWidth: .infinity)
-                .foregroundStyle(viewModel.canConfirm ? AppColor.gray900 : AppColor.gray300)
-                .disabled(!viewModel.canConfirm)
+            // 취소 / 확인 (각 초록/회색 fill, radius 8)
+            HStack(spacing: 16) {
+                actionButton("취소", filled: AppColor.gray300, enabled: true) { dismiss() }
+                actionButton("확인", filled: viewModel.canConfirm ? AppColor.primary : AppColor.gray300,
+                             enabled: viewModel.canConfirm) { onConfirm?() }
             }
-            .font(.system(size: 16, weight: .semibold))
-            .padding(.vertical, 14)
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .padding(.bottom, 14)
         }
         .background(AppColor.white)
     }
+
+    private func actionButton(_ title: String, filled: Color, enabled: Bool,
+                              action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(AppFont.pretendard(14, .medium))   // P_M_14
+                .foregroundStyle(AppColor.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 37)
+                .background(filled, in: RoundedRectangle(cornerRadius: 8))
+        }
+        .disabled(!enabled)
+    }
+
+    private enum PointRole { case start, waypoint, destination }
 
     private enum RowTrailing {
         case none
@@ -93,21 +136,31 @@ struct RouteEditView: View {
         case add
     }
 
-    private func pointRow(name: String?, placeholder: String,
+    private func pointRow(role: PointRole, name: String?, placeholder: String,
                           trailing: RowTrailing, slot: RouteDraft.EditSlot) -> some View {
-        ZStack {
+        let isFilled = name != nil
+        // 출발/도착 = SemiBold Gray900, 경유 = Medium Gray700, 미설정 = Gray500
+        let nameFont = role == .waypoint ? AppFont.pretendard(15, .medium) : AppFont.pretendard(15, .semibold)
+        let nameColor: Color = !isFilled ? AppColor.gray500
+            : (role == .waypoint ? AppColor.gray700 : AppColor.gray900)
+
+        return ZStack {
             // 지점명 (가운데 정렬) — 탭 시 검색으로 설정
             Text(name ?? placeholder)
-                .font(.system(size: 16))
-                .foregroundStyle(name == nil ? AppColor.gray500 : AppColor.gray900)
+                .font(nameFont)
+                .foregroundStyle(nameColor)
+                .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.horizontal, 44)
                 .contentShape(Rectangle())
                 .onTapGesture { onEditSlot?(slot) }
 
-            // 핸들(좌) + 액션(우)
+            // 순서 핸들(좌, 상하 chevron) + 액션(우)
             HStack {
-                Image(systemName: "line.3.horizontal")
-                    .font(.system(size: 16))
+                Image("ic_expand_all")     // 디자인시스템 expand_all
+                    .renderingMode(.template)
+                    .resizable()
+                    .frame(width: 24, height: 24)
                     .foregroundStyle(AppColor.gray500)
                 Spacer()
                 switch trailing {
@@ -115,23 +168,25 @@ struct RouteEditView: View {
                     Color.clear.frame(width: 24, height: 24)
                 case .remove(let place):
                     Button { viewModel.removeWaypoint(place) } label: {
-                        Image(systemName: "minus")
-                            .font(.system(size: 18))
-                            .foregroundStyle(AppColor.gray500)
+                        Image("ic_check_indeterminate_small")   // 디자인시스템 경유지 제거
+                            .renderingMode(.template)
+                            .resizable()
                             .frame(width: 24, height: 24)
+                            .foregroundStyle(AppColor.gray500)
                     }
                 case .add:
                     Button { viewModel.addWaypointSlot() } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 18))
-                            .foregroundStyle(viewModel.canAddWaypoint ? AppColor.gray500 : AppColor.gray300)
+                        Image("ic_add")            // 디자인시스템 add
+                            .renderingMode(.template)
+                            .resizable()
                             .frame(width: 24, height: 24)
+                            .foregroundStyle(viewModel.canAddWaypoint ? AppColor.gray500 : AppColor.gray300)
                     }
                     .disabled(!viewModel.canAddWaypoint)
                 }
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 16)
+        .padding(.vertical, 15)
     }
 }
