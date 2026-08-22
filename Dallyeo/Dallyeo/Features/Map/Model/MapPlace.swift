@@ -21,7 +21,7 @@ struct MapPlace: Identifiable, Sendable, Hashable {
     /// 우리 분류에 없는 종류일 때 대신 보여줄 이름 (예: 카카오의 "지하철역").
     /// 있으면 `category.label` 대신 이 값을 쓴다.
     var categoryLabelOverride: String? = nil
-    var badge: String? = nil     // "착한식당" 등 배지
+    var badge: String? = nil     // 표시용 배지 이름 (PlaceBadge.label)
 
     var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
@@ -114,5 +114,26 @@ enum PlaceCategory: String, Sendable, CaseIterable {
         case attraction   // 관광지 계열
         case food         // 음식점 계열
         case other        // 지도에 표시하지 않음
+    }
+}
+
+/// 장소 배지. BE(`/places/{id}`)는 한글이 아니라 **코드 문자열**로 준다.
+/// 그대로 뿌리면 화면에 "GOOD_PRICE"가 찍힌다.
+enum PlaceBadge: String, Sendable, CaseIterable {
+    case modelRestaurant = "MODEL_RESTAURANT"  // 모범음식점
+    case goodPrice       = "GOOD_PRICE"        // 착한가격업소
+
+    var label: String {
+        switch self {
+        case .modelRestaurant: "모범음식점"
+        case .goodPrice:       "착한가격업소"
+        }
+    }
+
+    /// BE 코드 배열 → 화면에 쓸 한글 이름.
+    /// 모르는 코드는 버린다 — 배지는 장식이라, 영문 코드를 그대로 보여주느니
+    /// 안 보여주는 편이 낫다. (BE에 배지가 추가되면 여기에 케이스를 더한다)
+    static func labels(from codes: [String]?) -> [String] {
+        (codes ?? []).compactMap { PlaceBadge(rawValue: $0.uppercased())?.label }
     }
 }
