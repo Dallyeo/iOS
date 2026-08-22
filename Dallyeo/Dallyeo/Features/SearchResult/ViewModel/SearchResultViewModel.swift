@@ -56,7 +56,7 @@ final class SearchResultViewModel {
     func cardData(for place: MapPlace) -> PlaceCardData {
         PlaceCardData(
             name: place.name,
-            categoryLabel: place.category.label,
+            categoryLabel: place.categoryLabel,
             distance: place.distance,
             businessHours: nil,
             address: place.address,
@@ -83,9 +83,11 @@ final class SearchResultViewModel {
 
     /// Kakao → MapPlace (사진 없음)
     private static func mapPlace(from k: KakaoPlace) -> MapPlace {
-        // 카카오 그룹코드: FD6 음식점 / CE7 카페
-        let category: PlaceCategory = k.categoryGroupCode == "CE7" ? .cafe
-            : (k.categoryGroupCode == "FD6" ? .restaurant : .tour)
+        // 카카오 분류를 우리 분류로 옮긴다. 없는 종류(지하철역·은행 등)는
+        // 카카오가 준 이름을 그대로 보여준다 — 예전에는 전부 "관광지"로 뭉갰다.
+        let mapped = PlaceCategory.from(kakaoGroupCode: k.categoryGroupCode)
+        let category = mapped ?? .tour
+        let labelOverride = mapped == nil ? k.categoryGroupName : nil
         return MapPlace(
             id: k.id,
             name: k.name,
@@ -94,7 +96,8 @@ final class SearchResultViewModel {
             longitude: k.coordinate.longitude,
             thumbnailURL: nil,
             distance: k.distance.flatMap { Int($0) }.map { $0 < 1000 ? "\($0)m" : String(format: "%.1fkm", Double($0) / 1000) },
-            address: k.roadAddress ?? k.address
+            address: k.roadAddress ?? k.address,
+            categoryLabelOverride: labelOverride
         )
     }
 }

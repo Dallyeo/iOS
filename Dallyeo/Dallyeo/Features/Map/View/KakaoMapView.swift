@@ -51,6 +51,13 @@ struct KakaoMapView: UIViewRepresentable {
             .compactMap { $0 as? UIWindowScene }
             .first?.windows.first?.bounds ?? UIScreen.main.bounds
         let container = KMViewContainer(frame: bounds)
+        // 엔진이 첫 프레임을 그리기 전에 정해야 한다. 아는 위치를 우선순위대로 쓴다.
+        context.coordinator.initialCenter = fitCoordinates.first
+            ?? routePolyline.first
+            ?? markers.first?.coordinate
+            ?? places.first?.coordinate
+            ?? userLocation
+            ?? LocationProvider.shared.current
         context.coordinator.setup(container: container)
         return container
     }
@@ -111,6 +118,10 @@ extension KakaoMapView {
         var followsUser = false
         /// 진행 방향(도). 지도를 이만큼 돌려 진행 방향이 화면 위가 되게 한다.
         var heading: Double?
+        /// 지도 엔진을 처음 그릴 중심. 뷰 생성 시점에 정해진다.
+        var initialCenter: CLLocationCoordinate2D?
+        /// 아무 위치도 모를 때만 쓰는 좌표 (서비스 기본 지역)
+        static let fallbackCenter = CLLocationCoordinate2D(latitude: 35.9676, longitude: 126.7107)
 
         private let poiLayerID = "placeLayer"
         private let poiStyleID = "placeMarker"
@@ -139,7 +150,10 @@ extension KakaoMapView {
         // MARK: - MapControllerDelegate
 
         func addViews() {
-            let defaultPosition = MapPoint(longitude: 126.7107, latitude: 35.9676) // 기본: 군산
+            // 지도 엔진이 처음 그릴 위치. 여기가 고정 좌표면 카메라가 옮겨가기 전까지
+            // 엉뚱한 지역(군산)이 잠깐 보인다. 이미 알고 있는 위치를 먼저 쓴다.
+            let start = initialCenter ?? Self.fallbackCenter
+            let defaultPosition = MapPoint(longitude: start.longitude, latitude: start.latitude)
             let mapviewInfo = MapviewInfo(
                 viewName: "mapview",
                 viewInfoName: "map",
