@@ -133,7 +133,30 @@ final class RunningViewModel: NSObject {
 
     private let locationManager = CLLocationManager()
     private var timer: Timer?
-    private let bodyWeightKg: Double = 65   // TODO: 프로필 연동
+
+    /// 칼로리 계산용 체중(kg).
+    /// 온보딩(웹)에서 입력받은 값을 브릿지로 넘겨줄 수 있게 되면 그때 주입한다.
+    /// 그전까지는 기본값 — 입력하지 않은 사용자도 있으므로 기본값은 계속 필요하다.
+    var bodyWeightKg: Double = RunningViewModel.defaultBodyWeightKg
+    static let defaultBodyWeightKg: Double = 65
+
+    // MARK: 위치 샘플 필터/집계
+
+    /// 직전에 채택한 위치 샘플
+    private var lastSample: CLLocation?
+    /// 최근 구간 (현재 페이스 계산용)
+    private var recentSamples: [(distance: Double, duration: TimeInterval)] = []
+    /// 칼로리 누적(소수 유지). Int로 바로 담으면 구간마다 버림이 쌓인다.
+    private var caloriesAccumulator: Double = 0
+
+    /// 이보다 정확도가 나쁜 샘플은 버린다(m)
+    private static let maxAcceptableAccuracy: Double = 30
+    /// 이보다 작게 움직였으면 노이즈로 본다(m)
+    private static let minMovementMeters: Double = 3
+    /// 사람이 낼 수 있는 최대 속도(m/s). 약 27km/h — 이보다 빠르면 튄 좌표다.
+    private static let maxPlausibleSpeed: Double = 7.5
+    /// 현재 페이스를 계산할 최근 구간 길이(초)
+    private static let paceWindowSeconds: TimeInterval = 30
     private let arrivalThreshold: Double = 30      // 지점 도착 판정(m)
     private let deviationThreshold: Double = 1000  // 경로 이탈(m)
 
@@ -191,7 +214,6 @@ final class RunningViewModel: NSObject {
     private func tickRunning() {
         guard phase == .running else { return }
         elapsedSec += 1
-        updateCalories()
     }
 
     func pause() {
@@ -199,6 +221,9 @@ final class RunningViewModel: NSObject {
         phase = .paused
         locationManager.stopUpdatingLocation()
         currentPaceSecPerKm = 0
+        // 재개 시 정지 구간이 페이스에 섞이지 않도록 최근 구간과 직전 샘플을 비운다
+        recentSamples.removeAll()
+        lastSample = nil
         activeAlert = .paused
     }
 
@@ -227,10 +252,6 @@ final class RunningViewModel: NSObject {
 
     // MARK: - 계산
 
-    private func updateCalories() {
-        // 간단 추정: kcal ≈ 거리(km) × 체중(kg) × 1.036
-        calories = Int((distanceMeters / 1000) * bodyWeightKg * 1.036)
-    }
 
     /// 평균 페이스(초/km)
     private var averagePaceSecPerKm: Int {
@@ -277,6 +298,83 @@ final class RunningViewModel: NSObject {
         CLLocation(latitude: a.latitude, longitude: a.longitude)
             .distance(from: CLLocation(latitude: b.latitude, longitude: b.longitude))
     }
+
+    // MARK: - 위치 샘플 처리
+
+    /// 위치 샘플 하나를 받아 거리·페이스·방향을 갱신한다.
+    ///
+    /// GPS는 도심에서 10~20m씩 튄다. 걸러내지 않으면 **가만히 서 있어도 거리와
+    /// 칼로리가 계속 올라간다.** 아래 두 가지로 거른다:
+    ///  - 정확도가 나쁜 샘플은 버린다
+    ///  - 직전 샘플 대비 이동이 정확도보다 작으면 노이즈로 보고 거리에 넣지 않는다
+    private func ingest(_ location: CLLocation) {
+        // 1) 정확도가 나쁘거나 알 수 없는 샘플은 버린다
+        let accuracy = location.horizontalAccuracy
+        guard accuracy > 0, accuracy <= Self.maxAcceptableAccuracy else { return }
+
+        // 2) 지도 표시용 현재 위치·방향은 항상 갱신 (거리에 안 넣더라도 위치는 보여야 한다)
+        userLocation = location.coordinate
+        if location.course >= 0 { headingDegrees = location.course }
+
+        defer {
+            lastSample = location
+            advanceTargetIfReached()
+            checkDeviation()
+        }
+
+        guard let previous = lastSample else {
+            traveledPath.append(location.coordinate)
+            return
+        }
+
+        let moved = location.distance(from: previous)
+        let elapsed = location.timestamp.timeIntervalSince(previous.timestamp)
+
+        // 3) 이동량이 GPS 오차 범위 안이면 실제로 움직인 게 아니다
+        guard moved >= max(Self.minMovementMeters, accuracy * 0.5) else { return }
+        // 4) 사람이 낼 수 없는 속도면 튄 좌표다
+        guard elapsed > 0, moved / elapsed <= Self.maxPlausibleSpeed else { return }
+
+        distanceMeters += moved
+        traveledPath.append(location.coordinate)
+        recentSamples.append((distance: moved, duration: elapsed))
+        trimRecentSamples()
+        updateCurrentPace()
+        accumulateCalories(distance: moved, duration: elapsed)
+    }
+
+    /// 최근 구간만 남긴다. 전체 평균으로 페이스를 내면 값이 굼떠서
+    /// 지금 빠른지 느린지가 안 보인다.
+    private func trimRecentSamples() {
+        var total = recentSamples.reduce(0) { $0 + $1.duration }
+        while total > Self.paceWindowSeconds, recentSamples.count > 1 {
+            total -= recentSamples.removeFirst().duration
+        }
+    }
+
+    /// 현재 페이스 = 최근 구간의 시간 ÷ 거리
+    private func updateCurrentPace() {
+        let distance = recentSamples.reduce(0) { $0 + $1.distance }
+        let duration = recentSamples.reduce(0) { $0 + $1.duration }
+        guard distance > 0, duration > 0 else { currentPaceSecPerKm = 0; return }
+        currentPaceSecPerKm = Int(duration / (distance / 1000))
+    }
+
+    /// 칼로리 = MET × 체중(kg) × 시간(h). 구간별로 누적한다.
+    /// MET은 그 구간의 속도로 매핑한다 (걷기~3.5, 조깅~8, 러닝~10, 빠름~11.5).
+    private func accumulateCalories(distance: Double, duration: TimeInterval) {
+        let speed = distance / duration          // m/s
+        let met: Double
+        switch speed {
+        case ..<1.4:  met = 3.5    // 걷기
+        case ..<2.2:  met = 6.0    // 빠른 걷기
+        case ..<2.7:  met = 8.0    // 조깅
+        case ..<3.3:  met = 10.0   // 러닝
+        default:      met = 11.5   // 빠른 러닝
+        }
+        caloriesAccumulator += met * bodyWeightKg * (duration / 3600)
+        calories = Int(caloriesAccumulator)
+    }
 }
 
 // MARK: - CLLocationManagerDelegate
@@ -287,18 +385,7 @@ extension RunningViewModel: CLLocationManagerDelegate {
         guard let loc = locations.last else { return }
         Task { @MainActor in
             guard self.phase == .running else { return }
-            // 누적 거리
-            if let last = self.traveledPath.last {
-                self.distanceMeters += Self.distance(last, loc.coordinate)
-            }
-            self.traveledPath.append(loc.coordinate)
-            self.userLocation = loc.coordinate
-            // 현재 페이스 (speed m/s → 초/km)
-            self.currentPaceSecPerKm = loc.speed > 0.3 ? Int(1000 / loc.speed) : 0
-            // course는 정지 중이면 음수가 온다. 그럴 땐 직전 방향을 유지한다.
-            if loc.course >= 0 { self.headingDegrees = loc.course }
-            self.advanceTargetIfReached()
-            self.checkDeviation()
+            self.ingest(loc)
         }
     }
 
