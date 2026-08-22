@@ -14,12 +14,44 @@ struct DallyeoAPIClient {
     var baseURL: URL = APIConfig.baseURL
     var session: URLSession = .shared
 
+    /// 외부 API 지연으로 실패했을 때 다시 시도하기 전 대기 시간.
+    private static let retryDelay: Duration = .milliseconds(300)
+
     /// GET 요청 후 `ApiResponse<T>`를 벗겨 `T` 반환.
     /// - query 값이 nil인 항목은 자동 생략.
+    /// - retries: 외부 API 오류(502 / `EXTERNAL_API_ERROR`)일 때만 추가 시도 횟수.
+    ///   `/places/*`는 TourAPI를 실시간 호출해 간헐적으로 502가 난다(API.md 9-3).
     func get<T: Decodable>(
         _ path: String,
         query: [String: String?] = [:],
+        retries: Int = 0,
         as type: T.Type = T.self
+    ) async throws -> T {
+        var attempt = 0
+        while true {
+            do {
+                return try await perform(path, query: query, as: type)
+            } catch {
+                guard attempt < retries, Self.isExternalAPIError(error) else { throw error }
+                attempt += 1
+                try? await Task.sleep(for: Self.retryDelay)
+            }
+        }
+    }
+
+    /// 외부 관광 API 지연/오류라서 재시도할 만한 실패인지.
+    private static func isExternalAPIError(_ error: Error) -> Bool {
+        switch error {
+        case APIClientError.badStatus(502):                     true
+        case APIClientError.business(let body):                 body.code == "EXTERNAL_API_ERROR"
+        default:                                                false
+        }
+    }
+
+    private func perform<T: Decodable>(
+        _ path: String,
+        query: [String: String?],
+        as type: T.Type
     ) async throws -> T {
         guard let url = URL(string: path, relativeTo: baseURL),
               var comps = URLComponents(url: url, resolvingAgainstBaseURL: true) else {

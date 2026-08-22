@@ -114,7 +114,8 @@ final class MapViewModel: NSObject {
             } else {
                 dtos = try await DallyeoAPI.places(region: "GUNSAN")
             }
-            let places = dtos.map { Self.mapPlace(from: $0) }
+            // 좌표 없는 항목은 지도에 찍을 수 없어 제외
+            let places = dtos.compactMap { Self.mapPlace(from: $0) }
             attractions = places.filter { $0.category.group == .attraction }
             restaurants = places.filter { $0.category.group == .food }
         } catch {
@@ -123,8 +124,9 @@ final class MapViewModel: NSObject {
         }
     }
 
-    /// PlaceSummary DTO → MapPlace
-    private static func mapPlace(from d: PlaceSummaryDTO) -> MapPlace {
+    /// PlaceSummary DTO → MapPlace. 좌표가 없으면 nil.
+    private static func mapPlace(from d: PlaceSummaryDTO) -> MapPlace? {
+        guard let coord = d.coordinate else { return nil }
         let category = PlaceCategory(backend: d.category)
         let distance = d.distanceMeters.map { m in
             m < 1000 ? "\(Int(m))m" : String(format: "%.1fkm", m / 1000)
@@ -139,7 +141,7 @@ final class MapViewModel: NSObject {
         let thumb = d.thumbnailUrl?.replacingOccurrences(of: "http://", with: "https://")
         return MapPlace(
             id: d.id, name: d.name, category: category,
-            latitude: d.latitude, longitude: d.longitude,
+            latitude: coord.latitude, longitude: coord.longitude,
             thumbnailURL: thumb, distance: distance,
             address: d.address, subtitle: subtitle, badge: nil
         )
