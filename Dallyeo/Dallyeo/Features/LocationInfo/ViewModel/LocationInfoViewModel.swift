@@ -43,9 +43,10 @@ final class LocationInfoViewModel {
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    /// 배지 목록 (예: 러닝 추천, 착한식당)
+    /// 배지 목록 (예: 모범음식점, 착한가격업소).
+    /// BE가 코드 문자열로 주므로 한글로 옮겨서 내보낸다.
     var badges: [String] {
-        detail?.badges ?? []
+        PlaceBadge.labels(from: detail?.badges)
     }
 
     /// 가로 스크롤 이미지 목록. 상세 imageUrl + 카드 썸네일 (중복/nil 제거, http→https).
