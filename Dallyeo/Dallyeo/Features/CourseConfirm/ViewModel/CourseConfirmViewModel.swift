@@ -120,7 +120,7 @@ final class CourseConfirmViewModel {
             .filter { seen.insert($0.id).inserted }
             .sorted { ($0.distanceMeters ?? .greatestFiniteMagnitude) < ($1.distanceMeters ?? .greatestFiniteMagnitude) }
             .prefix(Self.maxNearbyMarkers)
-            .map(MapPlace.init(dto:))
+            .compactMap(MapPlace.init(dto:))
     }
 
     /// 코스 근방 검색 반경(m). 스펙 "코스 근방 1km".
@@ -164,13 +164,15 @@ final class CourseConfirmViewModel {
 
 private extension MapPlace {
 
-    init(dto: PlaceSummaryDTO) {
+    /// 좌표가 없으면 nil — 주변 마커로 찍을 수 없다.
+    init?(dto: PlaceSummaryDTO) {
+        guard let coord = dto.coordinate else { return nil }
         self.init(
             id: dto.id,
             name: dto.name,
             category: PlaceCategory(backend: dto.category),
-            latitude: dto.latitude,
-            longitude: dto.longitude,
+            latitude: coord.latitude,
+            longitude: coord.longitude,
             thumbnailURL: dto.thumbnailUrl,
             distance: dto.distanceMeters.map { $0 >= 1000
                 ? String(format: "%.1fkm", $0 / 1000)
