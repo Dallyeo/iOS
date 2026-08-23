@@ -19,17 +19,18 @@ final class AppCoordinator {
     var nativeEntry: NativeEntry?
 
     enum NativeEntry: Hashable {
-        /// V04 검색뷰부터 (코스 만들기)
+        /// V03 지도뷰부터 (코스 만들기).
+        /// 검색으로 바로 넘기지 않는다 — 지도에서 주변 추천을 보고 검색바를 눌러 V04로 간다.
         case courseSearch
         /// V08 코스확인뷰 — 웹의 추천 코스
         case courseConfirm(courseId: String?)
         /// V09 코스진행뷰 — 웹에서 바로 러닝 시작
         case running(courseId: String)
 
-        /// ContentView에 넘길 진입 라우트
-        var route: AppRoute {
+        /// ContentView에 넘길 진입 라우트. nil이면 네이티브 뿌리(V03 지도뷰)에서 시작한다.
+        var route: AppRoute? {
             switch self {
-            case .courseSearch:                  .search
+            case .courseSearch:                  nil
             case .courseConfirm(let id):         .courseConfirm(courseId: id)
             case .running(let id):               .running(courseId: id)
             }
