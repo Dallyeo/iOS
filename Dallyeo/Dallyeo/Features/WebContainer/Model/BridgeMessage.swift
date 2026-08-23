@@ -40,12 +40,22 @@ struct BridgeResponse: Codable, Sendable {
 
 struct BridgeErrorPayload: Codable, Sendable {
     let kind: String
+    let message: String?
+
+    init(kind: String, message: String? = nil) {
+        self.kind = kind
+        self.message = message
+    }
 
     static let cancelled     = BridgeErrorPayload(kind: "cancelled")
     static let unknownMethod = BridgeErrorPayload(kind: "unknown_method")
     static let invalidParams = BridgeErrorPayload(kind: "invalid_params")
     static let notImplemented = BridgeErrorPayload(kind: "not_implemented")
     static let permissionDenied = BridgeErrorPayload(kind: "permission_denied")
+    /// FE 규격: 로그인 실패 kind="failed" (+message)
+    static func failed(_ message: String? = nil) -> BridgeErrorPayload {
+        BridgeErrorPayload(kind: "failed", message: message)
+    }
     static func custom(_ kind: String) -> BridgeErrorPayload { BridgeErrorPayload(kind: kind) }
 }
 

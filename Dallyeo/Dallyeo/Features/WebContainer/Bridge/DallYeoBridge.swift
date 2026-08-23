@@ -8,10 +8,13 @@
 import Foundation
 import WebKit
 import UIKit
+import OSLog
 import CoreLocation
 
 @MainActor
 final class DallYeoBridge: NSObject, WKScriptMessageHandler {
+
+    private static let log = Logger(subsystem: "com.dallyeo.app", category: "bridge")
 
     weak var webView: WKWebView?
     weak var coordinator: AppCoordinator?
@@ -63,7 +66,7 @@ final class DallYeoBridge: NSObject, WKScriptMessageHandler {
 
         case .getCurrentSession:
             guard let id else { return }
-            handleGetCurrentSession(id: id)
+            await handleGetCurrentSession(id: id)
 
         case .getPermissionStatus:
             guard let id else { return }
@@ -127,27 +130,83 @@ final class DallYeoBridge: NSObject, WKScriptMessageHandler {
     // MARK: - Login/Logout
 
     private func handleLogin(params: [String: Any]?, id: String) async {
-        // TODO: OAuth 네이티브 로그인 구현 (Kakao / Apple)
-        // 취소 시 → reject(id: id, error: .cancelled)
-        reject(id: id, error: .notImplemented)
+        guard let providerString = params?["provider"] as? String,
+              let provider = AuthProviderKind(rawValue: providerString) else {
+            Self.log.error("login: 잘못된 provider 파라미터 (\(String(describing: params?["provider"]), privacy: .public))")
+            reject(id: id, error: .invalidParams)
+            return
+        }
+
+        Self.log.info("login 시작: provider=\(provider.rawValue, privacy: .public)")
+        do {
+            let session = try await AuthService.shared.login(provider: provider)
+            Self.log.info("login 성공: userId=\(session.userId, privacy: .public)")
+            resolve(id: id, data: sessionData(session))
+            emitSessionChanged(
+                status: "authenticated",
+                session: sessionMeta(session),
+                token: session.accessToken
+            )
+        } catch let error as AuthError {
+            switch error {
+            case .cancelled:
+                Self.log.notice("login 취소: provider=\(provider.rawValue, privacy: .public)")
+                reject(id: id, error: .cancelled)
+            case .failed(let message):
+                Self.log.error("login 실패: provider=\(provider.rawValue, privacy: .public) msg=\(message, privacy: .public)")
+                reject(id: id, error: .failed(message))
+            }
+        } catch {
+            Self.log.error("login 실패(기타): \(error.localizedDescription, privacy: .public)")
+            reject(id: id, error: .failed(error.localizedDescription))
+        }
     }
 
     private func handleLogout(id: String) async {
-        do {
-            try KeychainManager.shared.delete(for: "session")
-            resolve(id: id)
-            emitSessionChanged(status: "unauthenticated")
-        } catch {
-            reject(id: id, error: .custom("logout_failed"))
-        }
+        await AuthService.shared.logout()
+        resolve(id: id)
+        emitSessionChanged(status: "unauthenticated")
     }
 
     // MARK: - Session
 
-    private func handleGetCurrentSession(id: String) {
-        // TODO: Keychain에서 세션 읽어서 반환
-        // 세션 없으면 data: null
-        resolve(id: id, data: nil)
+    private func handleGetCurrentSession(id: String) async {
+        // 로그인 상태면 { session, token }, 미로그인이면 null (FE 규격)
+        // 만료 시 AuthService 가 refreshToken 으로 갱신을 시도한다.
+        if let session = await AuthService.shared.currentSession() {
+            resolve(id: id, data: sessionData(session))
+        } else {
+            callResolve(["id": id, "ok": true, "data": NSNull()])
+            // 저장된 세션이 갱신 실패로 파기됐을 수 있으므로 웹 상태를 맞춰 준다.
+            emitSessionChanged(status: "unauthenticated")
+        }
+    }
+
+    // MARK: - 세션 → 브릿지 페이로드
+
+    /// { userId, displayName?, expiresAt?(ISO8601) }
+    private func sessionMeta(_ session: AppSession) -> [String: Any] {
+        var meta: [String: Any] = ["userId": session.userId]
+        if let displayName = session.displayName {
+            meta["displayName"] = displayName
+        }
+        if let expiresAt = session.expiresAt {
+            meta["expiresAt"] = ISO8601DateFormatter().string(from: expiresAt)
+        }
+        return meta
+    }
+
+    /// { session: {...}, token, onboardingRequired? } — login / getCurrentSession resolve.data
+    /// `onboardingRequired` 는 FE 규격 외 추가 필드(BE 로그인 응답). 웹이 온보딩 분기에 사용.
+    private func sessionData(_ session: AppSession) -> [String: Any] {
+        var data: [String: Any] = [
+            "session": sessionMeta(session),
+            "token": session.accessToken
+        ]
+        if let onboardingRequired = session.onboardingRequired {
+            data["onboardingRequired"] = onboardingRequired
+        }
+        return data
     }
 
     // MARK: - Permission
@@ -177,7 +236,7 @@ final class DallYeoBridge: NSObject, WKScriptMessageHandler {
     // MARK: - Promise Resolution
     // window.__dallyeoBridgeResolve({ id, ok, data })
 
-    func resolve(id: String, data: [String: Any?]? = nil) {
+    func resolve(id: String, data: Any? = nil) {
         var response: [String: Any] = ["id": id, "ok": true]
         if let data {
             response["data"] = data
@@ -186,10 +245,14 @@ final class DallYeoBridge: NSObject, WKScriptMessageHandler {
     }
 
     func reject(id: String, error: BridgeErrorPayload) {
+        var errorDict: [String: Any] = ["kind": error.kind]
+        if let message = error.message {
+            errorDict["message"] = message
+        }
         let response: [String: Any] = [
             "id": id,
             "ok": false,
-            "error": ["kind": error.kind]
+            "error": errorDict
         ]
         callResolve(response)
     }

@@ -2,7 +2,7 @@
 //  DallyeoAPI.swift
 //  Dallyeo
 //
-//  BE 엔드포인트 정의 (인증 불필요 API). base URL 확정 후 바로 사용 가능.
+//  BE 엔드포인트 정의. base URL 확정 후 바로 사용 가능.
 //  스펙: docs/be-api-spec.md
 //
 
@@ -11,6 +11,31 @@ import Foundation
 enum DallyeoAPI {
 
     private static var client: DallyeoAPIClient { .shared }
+
+    // MARK: - 인증
+
+    /// POST /auth/login/{provider} 🌐
+    /// - Parameter authorizationCode: kakao=카카오 access token / apple=identity token(JWT)
+    static func login(provider: AuthProviderKind, authorizationCode: String) async throws -> AuthTokenDTO {
+        try await client.post(
+            "/auth/login/\(provider.rawValue)",
+            body: AuthLoginRequest(authorizationCode: authorizationCode)
+        )
+    }
+
+    /// POST /auth/refresh 🌐
+    /// 회전(rotation): 응답의 새 refreshToken 으로 교체 저장해야 한다.
+    static func refresh(refreshToken: String) async throws -> AuthTokenDTO {
+        try await client.post(
+            "/auth/refresh",
+            body: AuthRefreshRequest(refreshToken: refreshToken)
+        )
+    }
+
+    /// POST /auth/logout 🔒 (204, 본문 없음)
+    static func logout(accessToken: String) async throws {
+        try await client.postNoContent("/auth/logout", bearer: accessToken)
+    }
 
     // MARK: - 지역
 

@@ -9,6 +9,9 @@
 /* Begin PBXBuildFile section */
 		2BE636142FD85AA800221733 /* KakaoMapsSDK-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 2BE636132FD85AA800221733 /* KakaoMapsSDK-SPM */; };
 		2BE6363E2FDEBEC000221733 /* Secrets.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 2BE6363D2FDEBEC000221733 /* Secrets.xcconfig */; };
+		CC16BC0B300DFD9B00A2E459 /* KakaoSDKAuth in Frameworks */ = {isa = PBXBuildFile; productRef = CC16BC0A300DFD9B00A2E459 /* KakaoSDKAuth */; };
+		CC16BC0D300DFD9B00A2E459 /* KakaoSDKCommon in Frameworks */ = {isa = PBXBuildFile; productRef = CC16BC0C300DFD9B00A2E459 /* KakaoSDKCommon */; };
+		CC16BC0F300DFD9B00A2E459 /* KakaoSDKUser in Frameworks */ = {isa = PBXBuildFile; productRef = CC16BC0E300DFD9B00A2E459 /* KakaoSDKUser */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -42,7 +45,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CC16BC0F300DFD9B00A2E459 /* KakaoSDKUser in Frameworks */,
 				2BE636142FD85AA800221733 /* KakaoMapsSDK-SPM in Frameworks */,
+				CC16BC0D300DFD9B00A2E459 /* KakaoSDKCommon in Frameworks */,
+				CC16BC0B300DFD9B00A2E459 /* KakaoSDKAuth in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -87,6 +93,9 @@
 			name = Dallyeo;
 			packageProductDependencies = (
 				2BE636132FD85AA800221733 /* KakaoMapsSDK-SPM */,
+				CC16BC0A300DFD9B00A2E459 /* KakaoSDKAuth */,
+				CC16BC0C300DFD9B00A2E459 /* KakaoSDKCommon */,
+				CC16BC0E300DFD9B00A2E459 /* KakaoSDKUser */,
 			);
 			productName = Dallyeo;
 			productReference = 2BE635DD2FD00FDA00221733 /* Dallyeo.app */;
@@ -118,6 +127,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				2BE636122FD85AA800221733 /* XCRemoteSwiftPackageReference "KakaoMapsSDK-SPM" */,
+				CC16BC09300DFD9B00A2E459 /* XCRemoteSwiftPackageReference "kakao-ios-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2BE635DE2FD00FDA00221733 /* Products */;
@@ -186,7 +196,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = RP93HYBJ3X;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -279,9 +289,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = RP93HYBJ3X;
+				CODE_SIGN_ENTITLEMENTS = Dallyeo/Dallyeo.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = RP93HYBJ3X;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Dallyeo/Info.plist;
@@ -293,9 +307,11 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = cloud.dallyeo.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "Dallyeo Dev";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -311,9 +327,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = RP93HYBJ3X;
+				CODE_SIGN_ENTITLEMENTS = Dallyeo/Dallyeo.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				CODE_SIGN_STYLE = Manual;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = RP93HYBJ3X;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Dallyeo/Info.plist;
@@ -325,9 +345,11 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = cloud.dallyeo.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "Dallyeo Dev";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
@@ -370,6 +392,14 @@
 				minimumVersion = 2.12.12;
 			};
 		};
+		CC16BC09300DFD9B00A2E459 /* XCRemoteSwiftPackageReference "kakao-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/kakao/kakao-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.28.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -377,6 +407,21 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 2BE636122FD85AA800221733 /* XCRemoteSwiftPackageReference "KakaoMapsSDK-SPM" */;
 			productName = "KakaoMapsSDK-SPM";
+		};
+		CC16BC0A300DFD9B00A2E459 /* KakaoSDKAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = CC16BC09300DFD9B00A2E459 /* XCRemoteSwiftPackageReference "kakao-ios-sdk" */;
+			productName = KakaoSDKAuth;
+		};
+		CC16BC0C300DFD9B00A2E459 /* KakaoSDKCommon */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = CC16BC09300DFD9B00A2E459 /* XCRemoteSwiftPackageReference "kakao-ios-sdk" */;
+			productName = KakaoSDKCommon;
+		};
+		CC16BC0E300DFD9B00A2E459 /* KakaoSDKUser */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = CC16BC09300DFD9B00A2E459 /* XCRemoteSwiftPackageReference "kakao-ios-sdk" */;
+			productName = KakaoSDKUser;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

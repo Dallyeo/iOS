@@ -11,6 +11,9 @@ import WebKit
 struct WebViewRepresentable: UIViewRepresentable {
     let bridge: DallYeoBridge
 
+    /// FE 배포본(웹뷰 V01/V02/V10~V14). 로컬 번들 대신 원격 URL 로드.
+    static let webAppURL = URL(string: "https://dallyeo.vercel.app")!
+
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
         let contentController = WKUserContentController()
@@ -65,7 +68,13 @@ struct WebViewRepresentable: UIViewRepresentable {
         Coordinator()
     }
 
-    // MARK: - Load Local HTML
+    // MARK: - Load Web App (원격)
+
+    private func loadWebApp(_ webView: WKWebView) {
+        webView.load(URLRequest(url: Self.webAppURL))
+    }
+
+    // MARK: - Load Local HTML (번들 폴백 — 현재 미사용, 오프라인/개발용 보존)
 
     private func loadLocalHTML(_ webView: WKWebView) {
         guard let url = Bundle.main.url(
@@ -299,10 +308,12 @@ extension WebViewRepresentable {
             decidePolicyFor navigationAction: WKNavigationAction,
             decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
         ) {
-            // 외부 링크는 Safari에서 열기
+            // 링크 클릭 중 "외부 호스트"만 Safari로 열기.
+            // 웹앱 자체 호스트(FE SPA 라우팅)는 웹뷰 안에서 처리.
             if let url = navigationAction.request.url,
                navigationAction.navigationType == .linkActivated,
-               url.host != nil && !url.isFileURL {
+               let host = url.host,
+               host != WebViewRepresentable.webAppURL.host {
                 UIApplication.shared.open(url)
                 decisionHandler(.cancel)
                 return

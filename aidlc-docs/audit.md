@@ -88,3 +88,79 @@ V03 관련 프레임: V03_지도부1, V03_지도부2, V03_지도부3
 
 ### 코드 생성 계획
 → `aidlc-docs/construction/plans/v09-running-code-generation-plan.md` 참조
+
+---
+
+## 2026-08-23 — 사용자 요청
+
+> 브릿지 문서 참고해서, 메인에서 '코스 생성' 버튼 누를때랑 추천코스 누를 때
+> 각각 코스생성뷰, 추천코스뷰로 넘어가게 연결해줘
+
+### 조사 결과 — 코드 변경 불요 (이미 연결됨)
+
+`7c54fe8 feat: 웹 ↔ 네이티브 통합` 에서 배선 완료 상태.
+
+| 단계 | 코스 생성 | 추천코스 |
+|---|---|---|
+| 웹 버튼 | `create-course-button` | `course-card-{id}` |
+| 웹 호출 | `openCourseSearch()` | `openCourseConfirm(course)` |
+| 네이티브 수신 | DallYeoBridge.swift:88 | DallYeoBridge.swift:91 |
+| 화면 | V04 SearchView | V08 CourseConfirmView(courseId:) |
+
+### 사용자 증상의 원인
+- 실기기에서 "V04 검색뷰 + 뒤로가기" 임시 화면이 뜸
+- → `44ea4bc` 시점의 `PlaceholderView(title: "V04 검색뷰")`. `7c54fe8`에서 제거됨
+- → **기기에 설치된 앱이 구버전**. 재빌드/재설치로 해소
+
+### 데이터 경로 검증 (2026-08-23 실호출)
+- 웹 코스 목록: `GET https://dallyeo.cloud/courses?region=` (baseUrl 오버라이드로 MSW 우회)
+- 네이티브 `APIConfig.baseURL` = `https://dallyeo.cloud` — 동일 서버
+- `/regions` → GUNSAN, JEONJU 2개만
+- `/courses?region=GUNSAN` → 6개 정상 (실 ID 예: `gunsan-jjamppong-run`)
+- `/courses/{id}` → `polyline` 포함 정상
+- → 웹이 넘긴 courseId를 네이티브 V08이 그대로 조회 가능. 불일치 없음
+
+### 미해결 (별도 판단 필요)
+- V08 진입 후 뒤로가기 시 웹 메인이 아니라 V03 지도뷰로 복귀
+  (NavigationStack 루트가 MapView이기 때문). 웹 추천코스 진입 동선상 어색할 수 있음
+- FE 브릿지 문서 §5 `startRun` — 배포 번들에 호출부 없음(웹 미구현) 확인
+
+---
+
+## 2026-08-23 — 인증 백엔드 실연동 (feat/auth)
+
+### 요청
+BE 인증 API 스펙(§5) 확정본 수령 — `POST /auth/login/{provider}`, `POST /auth/refresh`, `POST /auth/logout`.
+현재 `StubAuthBackend`(목 세션)로만 배선된 인증 플로우를 실제 엔드포인트에 연결.
+
+### 착수 시점 상태 (조사 결과)
+- `AuthService`(기본 backend = `StubAuthBackend`) → 백엔드로 나가는 요청 **0건**.
+  로그인 성공 시 웹뷰에 주입되는 토큰은 `stub.kakao.<UUID>` 문자열.
+- `DallyeoAPIClient` 는 GET 전용, `DallyeoAPI` 에 auth 엔드포인트 없음.
+- 카카오 SDK 연동(id_token/access token 수신)·Keychain 저장·브릿지 규격은 이미 완료.
+
+### 스펙 대비 확인된 차이
+1. 카카오는 **access token** 전송 (기존 "OIDC id_token 통일" 결정 폐기)
+2. `user.id` 가 Int → `AppSession.userId`(String) 변환 필요
+3. 로그아웃이 서버 호출(🔒) 필요 — 현재는 로컬 clear만
+4. refresh 회전(rotation) 정책 → 자동로그인 조각2 구현 가능해짐
+5. `onboardingRequired` 는 FE 브릿지 규격에 없는 필드
+
+### 산출물
+- `aidlc-docs/construction/plans/auth-remote-backend-code-generation-plan.md`
+- 코드: `RemoteAuthBackend.swift`(신규), `AuthDTO.swift`(신규) + `DallyeoAPIClient`/`DallyeoAPI`/`AppSession`/`AuthBackend`/`AuthService`/`DallYeoBridge` 수정
+- 빌드 성공.
+
+### 실기기 1차 검증 결과 (2026-08-23)
+| 제공자 | 결과 | 원인 | 조치 |
+|---|---|---|---|
+| 카카오 | 무응답(교환 요청 자체 없음) | `onOpenURL` 핸들러 부재 → SDK 가 인가 코드 수신 불가 | `DallyeoApp` 에 `AuthController.handleOpenUrl` 배선 (수정 완료) |
+| 애플 | 401 UNAUTHORIZED | 서버측 Apple JWKS 검증 실패 (전송 형식은 정상) | 백엔드 client_id(aud) 대조 필요 — `JWTClaimsPeek` 진단 로그 추가 |
+
+### 실기기 2차 검증 (2026-08-23, onOpenURL 수정 후)
+- **카카오 로그인 성공** — 앱 버그 해소 확인. 로그아웃(`POST /auth/logout`)도 정상 호출.
+- 애플 401 지속. 전송 클레임 `aud=cloud.dallyeo.app` / `iss=https://appleid.apple.com` / exp 유효 / nonce 없음 — 모두 정상.
+- 카카오 성공으로 요청 형식·네트워크·라우팅 배제 → **서버 Apple 검증 분기 문제로 확정. 앱측 조치 불가, 백엔드 대기.**
+
+- 서버 상태 확인(더미 토큰): `/auth/login/{kakao,apple}` → 401, `/auth/login/google` → 400. 스펙대로 동작 중.
+- `APIErrorBody`(code/message) 형태 실제 응답과 일치 확인.

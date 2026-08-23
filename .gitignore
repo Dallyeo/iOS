@@ -63,3 +63,6 @@ fastlane/test_output
 
 # 시크릿 (절대 커밋 금지)
 Secrets.xcconfig
+
+# FE 웹 번들 (FE 레포 빌드 산출물 — 커밋 금지)
+Dallyeo/Dallyeo/FE/
