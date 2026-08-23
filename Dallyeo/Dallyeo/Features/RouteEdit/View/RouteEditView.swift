@@ -11,6 +11,14 @@ struct RouteEditView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel: RouteEditViewModel
+
+    /// 지금 끌고 있는 행의 현재 위치. nil이면 드래그 중이 아님.
+    @State private var draggingRow: Int?
+    /// 이미 한 칸 넘기는 데 쓴 이동량
+    @State private var consumedDrag: CGFloat = 0
+    /// 행 하나의 세로 간격(행 높이 + 구분선). 첫 행에서 실측해 채운다.
+    @State private var rowPitch: CGFloat = 54
+
     var onConfirm: (() -> Void)?
     /// 지점 슬롯 편집(검색으로 채우기) 요청
     var onEditSlot: ((RouteDraft.EditSlot) -> Void)?
@@ -129,6 +137,38 @@ struct RouteEditView: View {
         .disabled(!enabled)
     }
 
+    // MARK: - 순서 변경 드래그
+
+    /// 한 칸 넘길 때마다 소모한 이동량. `translation`은 시작점 기준 누적이라
+    /// 이미 반영한 만큼을 빼야 다음 칸을 정확히 셀 수 있다.
+    private func reorderGesture(startingAt rowIndex: Int) -> some Gesture {
+        DragGesture(minimumDistance: 4)
+            .onChanged { value in
+                if draggingRow == nil {
+                    draggingRow = rowIndex
+                    consumedDrag = 0
+                }
+                guard let current = draggingRow else { return }
+
+                let remaining = value.translation.height - consumedDrag
+                guard abs(remaining) >= rowPitch else { return }
+
+                let step = remaining > 0 ? 1 : -1
+                let target = min(max(current + step, 0), viewModel.rowCount - 1)
+                guard target != current else { return }
+
+                withAnimation(.snappy(duration: 0.18)) {
+                    viewModel.moveRow(from: current, to: target)
+                }
+                draggingRow = target
+                consumedDrag += CGFloat(step) * rowPitch
+            }
+            .onEnded { _ in
+                draggingRow = nil
+                consumedDrag = 0
+            }
+    }
+
     private enum PointRole { case start, waypoint, destination }
 
     private enum RowTrailing {
@@ -159,18 +199,18 @@ struct RouteEditView: View {
 
             // 순서 핸들(좌, 상하 chevron) + 액션(우)
             HStack {
-                // 탭해서 고르고, 다른 행을 탭하면 두 지점의 순서가 바뀐다.
-                Button { viewModel.selectForReorder(rowIndex) } label: {
-                    Image("ic_expand_all")     // 디자인시스템 expand_all
-                        .renderingMode(.template)
-                        .resizable()
-                        .frame(width: 24, height: 24)
-                        .foregroundStyle(
-                            viewModel.reorderIndex == rowIndex ? AppColor.primary : AppColor.gray500
-                        )
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
+                // 위아래로 끌어서 지점 순서를 바꾼다.
+                Image("ic_expand_all")     // 디자인시스템 expand_all
+                    .renderingMode(.template)
+                    .resizable()
+                    .frame(width: 24, height: 24)
+                    .foregroundStyle(draggingRow == rowIndex ? AppColor.primary : AppColor.gray500)
+                    // 잡는 영역만 넓히고 행 높이는 그대로 둔다.
+                    // (frame으로 키우면 행이 20pt쯤 두꺼워져 Figma와 어긋난다)
+                    .padding(10)
+                    .contentShape(Rectangle())
+                    .padding(-10)
+                    .gesture(reorderGesture(startingAt: rowIndex))
                 Spacer()
                 switch trailing {
                 case .none:
@@ -197,5 +237,14 @@ struct RouteEditView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 15)
+        // 드래그로 몇 칸 넘겼는지 세려면 실제 행 간격이 필요하다.
+        // 첫 행에서 한 번만 재고 구분선 1pt를 더한다.
+        .background {
+            if rowIndex == 0 {
+                GeometryReader { proxy in
+                    Color.clear.onAppear { rowPitch = proxy.size.height + 1 }
+                }
+            }
+        }
     }
 }

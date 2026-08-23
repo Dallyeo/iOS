@@ -74,14 +74,9 @@ final class RouteEditViewModel {
 
     func removeWaypoint(_ place: MapPlace) {
         draft.waypoints.removeAll { $0.id == place.id }
-        reorderIndex = nil
     }
 
-    // MARK: - 순서 변경 (스펙 V07 "↕ 선택 → 순서를 변경한다")
-
-    /// 순서를 바꾸려고 먼저 고른 행. 두 번째 행을 고르면 둘의 자리가 맞바뀐다.
-    /// 스펙이 드래그가 아니라 "선택"이라 두 번 탭으로 교환하는 방식을 쓴다.
-    var reorderIndex: Int?
+    // MARK: - 순서 변경 (스펙 V07 "↕ → 순서를 변경한다")
 
     /// 편집 패널에 보이는 순서대로의 지점. 출발·도착은 미설정이면 nil.
     /// (경유지 빈 칸은 좌표 0,0짜리 placeholder라 nil이 아니다)
@@ -92,22 +87,12 @@ final class RouteEditViewModel {
     /// 행 개수 — 출발 + 경유지 + 도착
     var rowCount: Int { draft.waypoints.count + 2 }
 
-    /// ↕ 탭. 처음 누르면 그 행을 고르고, 다른 행을 누르면 두 행을 맞바꾼다.
-    /// 같은 행을 다시 누르면 선택을 푼다.
-    func selectForReorder(_ index: Int) {
-        guard let picked = reorderIndex else {
-            reorderIndex = index
-            return
-        }
-        reorderIndex = nil
-        guard picked != index else { return }
-        swapRows(picked, index)
-    }
-
-    private func swapRows(_ a: Int, _ b: Int) {
+    /// 한 행을 다른 자리로 옮긴다. 드래그 핸들이 한 칸씩 호출한다.
+    func moveRow(from source: Int, to target: Int) {
         var rows = rowPlaces
-        guard rows.indices.contains(a), rows.indices.contains(b) else { return }
-        rows.swapAt(a, b)
+        guard rows.indices.contains(source), rows.indices.contains(target), source != target else { return }
+        let moved = rows.remove(at: source)
+        rows.insert(moved, at: target)
 
         draft.start = rows.first ?? nil
         draft.destination = rows.last ?? nil
