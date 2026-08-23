@@ -77,10 +77,12 @@ struct LocationInfoView: View {
         .task { await viewModel.load() }
     }
 
-    /// 바텀시트 최소 높이 — 드래그바 + 지점명/카테고리 + 역할 버튼(40) + 여백.
-    /// 이보다 낮추면 출발/경유/도착 버튼이 가려져 스펙("지점명, 출발지, 경유지,
-    /// 도착지만 남기고 축소")을 못 맞춘다.
-    private static let minSheetHeight: CGFloat = 150
+    /// 바텀시트 최소 높이 — 드래그바 + 지점명 한 줄만 빼꼼 보이는 높이.
+    ///
+    /// 스펙은 최소 단에도 출발/경유/도착을 남기라고 하지만, 그 높이(150)에서는
+    /// 버튼이 잘린 사진 위에 떠서 레이아웃이 깨져 보인다. 최소 단에서는 버튼을
+    /// 감추고 지도를 최대한 넓게 쓰는 쪽으로 간다.
+    private static let minSheetHeight: CGFloat = 100
 
     // MARK: - 상세 바텀시트
 
@@ -96,7 +98,12 @@ struct LocationInfoView: View {
             .padding(.bottom, 16)
         }
         .background(AppColor.white)
-        .safeAreaInset(edge: .bottom) { roleButtons }
+        // 최소 단에서는 버튼을 감춘다. 띄워두면 잘린 사진 위에 겹쳐 보인다.
+        .safeAreaInset(edge: .bottom) {
+            if sheetDetent != .height(Self.minSheetHeight) {
+                roleButtons
+            }
+        }
         // 사진 탭 → 전체화면 뷰어 (Notion V06: "꽉찬 화면으로 사진 보기")
         .fullScreenCover(item: Binding(
             get: { photoViewerIndex.map(PhotoIndex.init) },
