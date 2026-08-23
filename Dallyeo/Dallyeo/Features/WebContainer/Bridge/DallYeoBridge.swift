@@ -66,7 +66,7 @@ final class DallYeoBridge: NSObject, WKScriptMessageHandler {
 
         case .getCurrentSession:
             guard let id else { return }
-            handleGetCurrentSession(id: id)
+            await handleGetCurrentSession(id: id)
 
         case .getPermissionStatus:
             guard let id else { return }
@@ -163,19 +163,22 @@ final class DallYeoBridge: NSObject, WKScriptMessageHandler {
     }
 
     private func handleLogout(id: String) async {
-        AuthService.shared.logout()
+        await AuthService.shared.logout()
         resolve(id: id)
         emitSessionChanged(status: "unauthenticated")
     }
 
     // MARK: - Session
 
-    private func handleGetCurrentSession(id: String) {
+    private func handleGetCurrentSession(id: String) async {
         // 로그인 상태면 { session, token }, 미로그인이면 null (FE 규격)
-        if let session = AuthService.shared.currentSession {
+        // 만료 시 AuthService 가 refreshToken 으로 갱신을 시도한다.
+        if let session = await AuthService.shared.currentSession() {
             resolve(id: id, data: sessionData(session))
         } else {
             callResolve(["id": id, "ok": true, "data": NSNull()])
+            // 저장된 세션이 갱신 실패로 파기됐을 수 있으므로 웹 상태를 맞춰 준다.
+            emitSessionChanged(status: "unauthenticated")
         }
     }
 
@@ -193,9 +196,17 @@ final class DallYeoBridge: NSObject, WKScriptMessageHandler {
         return meta
     }
 
-    /// { session: {...}, token } — login / getCurrentSession resolve.data
+    /// { session: {...}, token, onboardingRequired? } — login / getCurrentSession resolve.data
+    /// `onboardingRequired` 는 FE 규격 외 추가 필드(BE 로그인 응답). 웹이 온보딩 분기에 사용.
     private func sessionData(_ session: AppSession) -> [String: Any] {
-        ["session": sessionMeta(session), "token": session.accessToken]
+        var data: [String: Any] = [
+            "session": sessionMeta(session),
+            "token": session.accessToken
+        ]
+        if let onboardingRequired = session.onboardingRequired {
+            data["onboardingRequired"] = onboardingRequired
+        }
+        return data
     }
 
     // MARK: - Permission

@@ -14,7 +14,8 @@ struct APIResponse<T: Decodable>: Decodable {
     let error: APIErrorBody?
 }
 
-/// BE ApiError 바디. (필드는 코드 확인 전 추정 — code/message. 승환 확인 후 보정)
+/// BE ApiError 바디. 실응답으로 형태 확인 완료 (2026-08-23):
+/// `{"success":false,"error":{"code":"UNAUTHORIZED","message":"..."}}`
 struct APIErrorBody: Decodable, Error {
     let code: String?
     let message: String?
@@ -25,6 +26,7 @@ enum APIClientError: Error {
     case invalidURL
     case transport(Error)       // 네트워크 실패
     case badStatus(Int)         // 2xx 아님 + 에러 바디 없음
+    case unauthorized           // 401 (소셜 검증 실패 / 토큰 만료·불일치)
     case business(APIErrorBody) // success=false (서버 비즈니스 오류)
     case emptyData              // success=true 인데 data 없음
     case decoding(Error)
