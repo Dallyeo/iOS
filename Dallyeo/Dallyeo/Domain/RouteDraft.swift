@@ -49,6 +49,12 @@ final class RouteDraft {
         }
     }
 
+    /// 빈 경유지 칸. 좌표가 0,0이라 경로 계산·마커에서 무시된다.
+    static func emptyWaypoint() -> MapPlace {
+        MapPlace(id: UUID().uuidString, name: "", category: .tour,
+                 latitude: 0, longitude: 0, thumbnailURL: nil, distance: nil)
+    }
+
     /// "현재 위치" 플레이스홀더 (실제 좌표는 위치 서비스 연동 시 주입)
     static func currentLocationPlace(_ coordinate: (lat: Double, lng: Double)? = nil) -> MapPlace {
         MapPlace(

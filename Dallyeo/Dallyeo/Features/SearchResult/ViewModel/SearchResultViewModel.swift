@@ -38,9 +38,13 @@ final class SearchResultViewModel {
         defer { isLoading = false }
 
         // 1) BE 큐레이션 검색 (썸네일 포함)
-        if let beResults = try? await DallyeoAPI.searchPlaces(keyword: term), !beResults.isEmpty {
-            results = beResults.map { Self.mapPlace(from: $0) }
-            return
+        //    좌표 없는 항목은 지도에 찍을 수 없어 제외한다 → 남는 게 없으면 Kakao로 넘어간다.
+        if let beResults = try? await DallyeoAPI.searchPlaces(keyword: term) {
+            let mapped = beResults.compactMap(Self.mapPlace(from:))
+            if !mapped.isEmpty {
+                results = mapped
+                return
+            }
         }
 
         // 2) Kakao 전국 검색 폴백 (사진 없음 — 텍스트 카드 상태)
@@ -67,8 +71,9 @@ final class SearchResultViewModel {
 
     // MARK: - 매핑
 
-    /// BE PlaceSummary → MapPlace
-    private static func mapPlace(from d: PlaceSummaryDTO) -> MapPlace {
+    /// BE PlaceSummary → MapPlace. 좌표가 없으면 nil(지도에 찍을 수 없다).
+    private static func mapPlace(from d: PlaceSummaryDTO) -> MapPlace? {
+        guard let coord = d.coordinate else { return nil }
         let category = PlaceCategory(backend: d.category)
         let distance = d.distanceMeters.map { m in
             m < 1000 ? "\(Int(m))m" : String(format: "%.1fkm", m / 1000)
@@ -76,7 +81,7 @@ final class SearchResultViewModel {
         let thumb = d.thumbnailUrl?.replacingOccurrences(of: "http://", with: "https://")
         return MapPlace(
             id: d.id, name: d.name, category: category,
-            latitude: d.latitude, longitude: d.longitude,
+            latitude: coord.latitude, longitude: coord.longitude,
             thumbnailURL: thumb, distance: distance, address: d.address
         )
     }

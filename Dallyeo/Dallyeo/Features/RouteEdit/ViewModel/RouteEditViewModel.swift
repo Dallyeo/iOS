@@ -68,19 +68,37 @@ final class RouteEditViewModel {
 
     func addWaypointSlot() {
         guard canAddWaypoint else { return }
-        // 빈 경유지 칸 추가 (placeholder). 실제 장소는 검색으로 채움(TODO)
-        draft.waypoints.append(
-            MapPlace(id: UUID().uuidString, name: "", category: .tour,
-                     latitude: 0, longitude: 0, thumbnailURL: nil, distance: nil)
-        )
+        // 빈 경유지 칸 추가 (placeholder). 실제 장소는 검색으로 채움
+        draft.waypoints.append(RouteDraft.emptyWaypoint())
     }
 
     func removeWaypoint(_ place: MapPlace) {
         draft.waypoints.removeAll { $0.id == place.id }
     }
 
-    func moveWaypoint(from source: IndexSet, to destinationIndex: Int) {
-        draft.waypoints.move(fromOffsets: source, toOffset: destinationIndex)
+    // MARK: - 순서 변경 (스펙 V07 "↕ → 순서를 변경한다")
+
+    /// 편집 패널에 보이는 순서대로의 지점. 출발·도착은 미설정이면 nil.
+    /// (경유지 빈 칸은 좌표 0,0짜리 placeholder라 nil이 아니다)
+    private var rowPlaces: [MapPlace?] {
+        [draft.start] + draft.waypoints.map { Optional($0) } + [draft.destination]
+    }
+
+    /// 행 개수 — 출발 + 경유지 + 도착
+    var rowCount: Int { draft.waypoints.count + 2 }
+
+    /// 한 행을 다른 자리로 옮긴다. 드래그 핸들이 한 칸씩 호출한다.
+    func moveRow(from source: Int, to target: Int) {
+        var rows = rowPlaces
+        guard rows.indices.contains(source), rows.indices.contains(target), source != target else { return }
+        let moved = rows.remove(at: source)
+        rows.insert(moved, at: target)
+
+        draft.start = rows.first ?? nil
+        draft.destination = rows.last ?? nil
+        // 가운데로 밀려온 자리가 비면(출발/도착이 미설정이었던 경우) 빈 칸으로 채워
+        // 행 개수를 유지한다. 그냥 버리면 경유지가 한 칸 사라진다.
+        draft.waypoints = rows.dropFirst().dropLast().map { $0 ?? RouteDraft.emptyWaypoint() }
     }
 
     // MARK: - T MAP 보행자 경로

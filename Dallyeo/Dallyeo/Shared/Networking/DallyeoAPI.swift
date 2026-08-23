@@ -46,14 +46,18 @@ enum DallyeoAPI {
 
     // MARK: - 장소
 
+    // `/places/*`는 TourAPI를 실시간으로 호출해 간헐적으로 502가 난다.
+    // API.md 9-3이 1~2회 재시도를 권장한다(두 번째부터는 서버 캐시라 빠르다).
+    private static let placesRetries = 1
+
     /// GET /places?region=&category=
     static func places(region: String, category: String? = nil) async throws -> [PlaceSummaryDTO] {
-        try await client.get("/places", query: ["region": region, "category": category])
+        try await client.get("/places", query: ["region": region, "category": category], retries: placesRetries)
     }
 
     /// GET /places/search?keyword=&region=&category=
     static func searchPlaces(keyword: String, region: String? = nil, category: String? = nil) async throws -> [PlaceSummaryDTO] {
-        try await client.get("/places/search", query: ["keyword": keyword, "region": region, "category": category])
+        try await client.get("/places/search", query: ["keyword": keyword, "region": region, "category": category], retries: placesRetries)
     }
 
     /// GET /places/nearby?lat=&lng=&radius=&category=
@@ -61,12 +65,12 @@ enum DallyeoAPI {
         try await client.get("/places/nearby", query: [
             "lat": String(lat), "lng": String(lng),
             "radius": radius.map(String.init), "category": category
-        ])
+        ], retries: placesRetries)
     }
 
     /// GET /places/{id}
     static func placeDetail(id: String) async throws -> PlaceDetailDTO {
-        try await client.get("/places/\(id)")
+        try await client.get("/places/\(id)", retries: placesRetries)
     }
 
     // MARK: - 코스
