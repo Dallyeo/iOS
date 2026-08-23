@@ -11,18 +11,29 @@ struct SearchResultView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel: SearchResultViewModel
-    @FocusState private var fieldFocused: Bool
     @State private var sheetDetent: PresentationDetent = .medium
 
     /// 네비게이션 최상단일 때만 바텀시트 표시 (push된 화면 위 시트 충돌 방지)
     var bottomSheetVisible: Bool = true
     /// 결과 선택 시 V06 위치정보뷰로
     var onSelectPlace: ((MapPlace) -> Void)?
+    /// 검색바 탭 — V04로 돌아가 검색어 수정
+    var onEditQuery: (() -> Void)?
+    /// 닫기(X) — 검색 초기 화면(V03)으로
+    var onClose: (() -> Void)?
 
-    init(query: String, bottomSheetVisible: Bool = true, onSelectPlace: ((MapPlace) -> Void)? = nil) {
+    init(
+        query: String,
+        bottomSheetVisible: Bool = true,
+        onSelectPlace: ((MapPlace) -> Void)? = nil,
+        onEditQuery: (() -> Void)? = nil,
+        onClose: (() -> Void)? = nil
+    ) {
         _viewModel = State(initialValue: SearchResultViewModel(query: query))
         self.bottomSheetVisible = bottomSheetVisible
         self.onSelectPlace = onSelectPlace
+        self.onEditQuery = onEditQuery
+        self.onClose = onClose
     }
 
     var body: some View {
@@ -34,7 +45,6 @@ struct SearchResultView: View {
         .ignoresSafeArea()
         .overlay(alignment: .top) {
             searchBar
-                .padding(.horizontal, 16)
                 .padding(.top, 8)
         }
         .navigationBarBackButtonHidden(true)
@@ -55,54 +65,16 @@ struct SearchResultView: View {
         }
     }
 
-    // MARK: - 검색바
+    // MARK: - 검색바 (V06과 공용 — Figma 542:992)
 
     private var searchBar: some View {
-        HStack(spacing: 8) {
-            Button { dismiss() } label: {
-                Image("ic_west")            // 디자인시스템 back/west
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 21, height: 15)
-                    .foregroundStyle(AppColor.gray900)
-                    .frame(width: 24, height: 24)
-            }
-
-            HStack(spacing: 8) {
-                TextField("장소 검색", text: $viewModel.query)
-                    .font(.system(size: 16))
-                    .foregroundStyle(AppColor.gray900)
-                    .focused($fieldFocused)
-                    .submitLabel(.search)
-                    .autocorrectionDisabled()
-                    .onSubmit { Task { await viewModel.search() } }
-
-                // 현재 지역 칩 (초록)
-                Text(viewModel.regionText)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(AppColor.white)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 5)
-                    .background(AppColor.primary, in: RoundedRectangle(cornerRadius: 8))
-
-                if !viewModel.query.isEmpty {
-                    Button { viewModel.query = "" } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 14))
-                            .foregroundStyle(AppColor.gray500)
-                    }
-                }
-            }
-            .padding(.leading, 16)
-            .padding(.trailing, 8)
-            .padding(.vertical, 8)
-            .background(AppColor.white, in: RoundedRectangle(cornerRadius: 10))
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .stroke(AppColor.gray300, lineWidth: 1)
-            )
-        }
+        SearchContextHeader(
+            query: viewModel.query,
+            regionText: viewModel.regionText,
+            onBack: { dismiss() },                       // → V04
+            onEditQuery: { onEditQuery?() ?? dismiss() }, // → V04에서 검색어 수정
+            onClose: { onClose?() }                      // → V03
+        )
     }
 
     // MARK: - 결과 바텀시트

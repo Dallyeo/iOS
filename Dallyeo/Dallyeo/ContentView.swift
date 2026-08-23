@@ -74,13 +74,17 @@ struct ContentView: View {
                     } else {
                         path.append(.locationInfo(place: place))
                     }
-                }
+                },
+                onEditQuery: { popToSearch() },
+                onClose: { closeSearchFlow() }
             )
         case .locationInfo(let place):
             LocationInfoView(
                 place: place,
                 bottomSheetVisible: isTop(route),
-                onRoleSet: { path.append(.routeEdit) }
+                onRoleSet: { path.append(.routeEdit) },
+                onEditQuery: { popToSearch() },
+                onClose: { closeSearchFlow() }
             )
         case .routeEdit:
             RouteEditView(
@@ -132,6 +136,28 @@ struct ContentView: View {
     /// 해당 라우트가 스택 최상단인지
     private func isTop(_ route: AppRoute) -> Bool {
         path.last == route
+    }
+
+    /// 검색바 탭 — V04로 돌아가 검색어를 고친다.
+    /// 스택에 V04가 있으면 거기까지 팝하고(입력 상태 유지), 없으면 새로 연다.
+    private func popToSearch() {
+        if let index = path.lastIndex(of: .search) {
+            path.removeSubrange((index + 1)...)
+        } else {
+            path.append(.search)
+        }
+    }
+
+    /// X 버튼 — 검색 흐름을 접는다.
+    /// 보통은 V03 지도까지 돌아가지만, V07에서 지점을 고르러 들어온 경우에는
+    /// 경로 편집을 날리면 안 되므로 V07까지만 되돌린다.
+    private func closeSearchFlow() {
+        routeDraft.editingSlot = nil
+        if let index = path.lastIndex(of: .routeEdit) {
+            path.removeSubrange((index + 1)...)
+        } else {
+            path.removeAll()
+        }
     }
 }
 

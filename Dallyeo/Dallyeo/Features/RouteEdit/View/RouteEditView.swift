@@ -84,23 +84,24 @@ struct RouteEditView: View {
     private var editPanel: some View {
         VStack(spacing: 0) {
             pointRow(role: .start, name: viewModel.start?.name, placeholder: "출발지 설정",
-                     trailing: .none, slot: .start)
+                     trailing: .none, slot: .start, rowIndex: 0)
             Divider()
 
-            ForEach(viewModel.waypoints) { wp in
+            ForEach(Array(viewModel.waypoints.enumerated()), id: \.element.id) { offset, wp in
                 pointRow(
                     role: .waypoint,
                     name: wp.name.isEmpty ? nil : wp.name,
                     placeholder: "경유지 설정",
                     trailing: .remove(wp),
-                    slot: .waypoint(wp.id)
+                    slot: .waypoint(wp.id),
+                    rowIndex: offset + 1
                 )
                 Divider()
             }
 
             // 도착지 행 + 경유지 추가(+)
             pointRow(role: .destination, name: viewModel.destination?.name, placeholder: "도착지 설정",
-                     trailing: .add, slot: .destination)
+                     trailing: .add, slot: .destination, rowIndex: viewModel.rowCount - 1)
 
             // 취소 / 확인 (각 초록/회색 fill, radius 8)
             HStack(spacing: 16) {
@@ -137,7 +138,8 @@ struct RouteEditView: View {
     }
 
     private func pointRow(role: PointRole, name: String?, placeholder: String,
-                          trailing: RowTrailing, slot: RouteDraft.EditSlot) -> some View {
+                          trailing: RowTrailing, slot: RouteDraft.EditSlot,
+                          rowIndex: Int) -> some View {
         let isFilled = name != nil
         // 출발/도착 = SemiBold Gray900, 경유 = Medium Gray700, 미설정 = Gray500
         let nameFont = role == .waypoint ? AppFont.pretendard(15, .medium) : AppFont.pretendard(15, .semibold)
@@ -157,11 +159,18 @@ struct RouteEditView: View {
 
             // 순서 핸들(좌, 상하 chevron) + 액션(우)
             HStack {
-                Image("ic_expand_all")     // 디자인시스템 expand_all
-                    .renderingMode(.template)
-                    .resizable()
-                    .frame(width: 24, height: 24)
-                    .foregroundStyle(AppColor.gray500)
+                // 탭해서 고르고, 다른 행을 탭하면 두 지점의 순서가 바뀐다.
+                Button { viewModel.selectForReorder(rowIndex) } label: {
+                    Image("ic_expand_all")     // 디자인시스템 expand_all
+                        .renderingMode(.template)
+                        .resizable()
+                        .frame(width: 24, height: 24)
+                        .foregroundStyle(
+                            viewModel.reorderIndex == rowIndex ? AppColor.primary : AppColor.gray500
+                        )
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
                 Spacer()
                 switch trailing {
                 case .none:
