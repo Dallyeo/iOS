@@ -12,6 +12,8 @@
 	<string>$(TMAP_APP_KEY)</string>
 	<key>UIDesignRequiresCompatibility</key>
 	<true/>
+	<key>UIUserInterfaceStyle</key>
+	<string>Light</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Pretendard-Light.otf</string>
