@@ -15,14 +15,28 @@ struct LocationInfoView: View {
     @State private var viewModel: LocationInfoViewModel
     /// 사진 전체화면 뷰어 시작 인덱스 (nil이면 닫힘)
     @State private var photoViewerIndex: Int?
+    /// 바텀시트 현재 단. 기본은 중간.
+    @State private var sheetDetent: PresentationDetent = .height(340)
     var bottomSheetVisible: Bool = true
     /// 역할 설정 완료 → V07 경로수정뷰로
     var onRoleSet: (() -> Void)?
+    /// 검색바 탭 — V04로 돌아가 검색어 수정
+    var onEditQuery: (() -> Void)?
+    /// 닫기(X) — 검색 초기 화면(V03)으로
+    var onClose: (() -> Void)?
 
-    init(place: MapPlace, bottomSheetVisible: Bool = true, onRoleSet: (() -> Void)? = nil) {
+    init(
+        place: MapPlace,
+        bottomSheetVisible: Bool = true,
+        onRoleSet: (() -> Void)? = nil,
+        onEditQuery: (() -> Void)? = nil,
+        onClose: (() -> Void)? = nil
+    ) {
         _viewModel = State(initialValue: LocationInfoViewModel(place: place))
         self.bottomSheetVisible = bottomSheetVisible
         self.onRoleSet = onRoleSet
+        self.onEditQuery = onEditQuery
+        self.onClose = onClose
     }
 
     private var place: MapPlace { viewModel.place }
@@ -34,15 +48,28 @@ struct LocationInfoView: View {
             showsPlaceMarkers: true
         )
         .ignoresSafeArea()
-        .overlay(alignment: .topLeading) {
-            backButton
-                .padding(.leading, 16)
+        .overlay(alignment: .top) {
+            // Figma 542:992 — V05와 같은 헤더를 쓴다(디자인상 V06은 V05의 상세 상태).
+            SearchContextHeader(
+                query: place.name,
+                regionText: LocationProvider.shared.displayRegionName,
+                onBack: { dismiss() },                        // → V05
+                onEditQuery: { onEditQuery?() ?? dismiss() }, // → V04
+                onClose: { onClose?() }                       // → V03
+            )
+            .padding(.top, 8)
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: .constant(bottomSheetVisible)) {
             detailSheet
-                .presentationDetents([.height(340), .large])
+                // 스펙 V06: 꽉참/중간/최소 3단 고정.
+                // 최소는 "지점명 + 출발/경유/도착만 남는" 높이.
+                // detent만 나열하면 가장 낮은 단으로 열려서, 기본은 중간으로 고정한다.
+                .presentationDetents(
+                    [.height(Self.minSheetHeight), .height(340), .large],
+                    selection: $sheetDetent
+                )
                 .presentationDragIndicator(.visible)
                 .presentationBackgroundInteraction(.enabled(upThrough: .large))
                 .interactiveDismissDisabled()
@@ -50,24 +77,12 @@ struct LocationInfoView: View {
         .task { await viewModel.load() }
     }
 
-    // MARK: - 뒤로가기 (플로팅 원형, V03과 동일)
-
-    private var backButton: some View {
-        Button { dismiss() } label: {
-            Image("ic_west")            // 디자인시스템 back/west
-                .renderingMode(.template)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 21, height: 15)
-                .foregroundStyle(AppColor.gray900)
-                .frame(width: 44, height: 44)
-                .background {
-                    Circle()
-                        .fill(AppColor.white)
-                        .shadow(color: .black.opacity(0.15), radius: 3, x: 0, y: 2)
-                }
-        }
-    }
+    /// 바텀시트 최소 높이 — 드래그바 + 지점명 한 줄만 빼꼼 보이는 높이.
+    ///
+    /// 스펙은 최소 단에도 출발/경유/도착을 남기라고 하지만, 그 높이(150)에서는
+    /// 버튼이 잘린 사진 위에 떠서 레이아웃이 깨져 보인다. 최소 단에서는 버튼을
+    /// 감추고 지도를 최대한 넓게 쓰는 쪽으로 간다.
+    private static let minSheetHeight: CGFloat = 100
 
     // MARK: - 상세 바텀시트
 
@@ -83,7 +98,12 @@ struct LocationInfoView: View {
             .padding(.bottom, 16)
         }
         .background(AppColor.white)
-        .safeAreaInset(edge: .bottom) { roleButtons }
+        // 최소 단에서는 버튼을 감춘다. 띄워두면 잘린 사진 위에 겹쳐 보인다.
+        .safeAreaInset(edge: .bottom) {
+            if sheetDetent != .height(Self.minSheetHeight) {
+                roleButtons
+            }
+        }
         // 사진 탭 → 전체화면 뷰어 (Notion V06: "꽉찬 화면으로 사진 보기")
         .fullScreenCover(item: Binding(
             get: { photoViewerIndex.map(PhotoIndex.init) },
