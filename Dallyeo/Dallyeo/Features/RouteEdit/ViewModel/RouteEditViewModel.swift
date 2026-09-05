@@ -117,11 +117,7 @@ final class RouteEditViewModel {
     var isRouting = false
 
     /// 유효 지점 좌표(빈 경유지 제외)
-    private var validCoords: [CLLocationCoordinate2D] {
-        orderedPlaces
-            .filter { $0.latitude != 0 && $0.longitude != 0 }
-            .map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
-    }
+    private var validCoords: [CLLocationCoordinate2D] { draft.validCoordinates }
 
     /// 지점 구성 변경 감지용 시그니처 (좌표 나열)
     var routeSignature: String {
@@ -129,26 +125,11 @@ final class RouteEditViewModel {
     }
 
     /// T MAP 보행자 경로 재계산 (지점 2개 이상일 때). 실패 시 직선거리로 폴백.
+    /// 계산 자체는 draft가 한다 — V08(현재 위치 삽입)도 같은 계산을 써야 한다.
     func recalculateRoute() async {
-        let coords = validCoords
-        guard coords.count >= 2 else {
-            routePolyline = []; routeMeters = nil; return
-        }
-        let start = coords.first!
-        let end = coords.last!
-        let mids = Array(coords.dropFirst().dropLast())
-        guard mids.count <= TMapService.maxPassPoints else { return }
-
         isRouting = true
         defer { isRouting = false }
-        do {
-            let route = try await TMapService.pedestrianRoute(start: start, waypoints: mids, destination: end)
-            routePolyline = route.polyline
-            routeMeters = route.totalMeters
-        } catch {
-            routePolyline = []
-            routeMeters = nil   // 직선거리 폴백
-        }
+        await draft.recalculateRoute()
     }
 
     /// 직선 거리 합산 (km) — T MAP 실패 시 폴백

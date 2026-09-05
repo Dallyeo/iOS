@@ -59,8 +59,13 @@ final class CourseConfirmViewModel {
     // MARK: - 로드
 
     func load() async {
-        // 추천 코스는 먼저 코스를 받아온다. 직접 만든 코스는 이미 확정 상태.
-        if case .backend(let courseId) = source {
+        switch source {
+        case .draft(let draft):
+            // 직접 만든 코스는 이미 확정 상태. 출발지만 현재 위치 기준으로 손본다.
+            await startFromCurrentLocationIfFar(draft)
+
+        case .backend(let courseId):
+            // 추천 코스는 먼저 코스를 받아온다.
             guard course == nil, !isLoading else { return }
 
             isLoading = true
@@ -76,6 +81,23 @@ final class CourseConfirmViewModel {
             guard !loadFailed else { return }
         }
         await loadNearbyPlaces()
+    }
+
+    /// 출발지가 현재 위치에서 1km 넘게 떨어져 있으면 **현재 위치를 출발지로 끼워 넣고
+    /// 원래 출발지를 경유지1로 내린다.** 앞 구간이 새로 생기므로 경로도 다시 받는다.
+    ///
+    /// 직접 만든 코스에서만 한다. 추천 코스는 BE가 정한 코스 그대로 달려야 한다
+    /// (지점을 바꾸면 완주율·거리 기준이 원본과 어긋난다).
+    ///
+    /// 재진입해도 안전하다 — 이미 현재 위치에서 출발하는 코스면 draft가 그냥 false를 준다.
+    private func startFromCurrentLocationIfFar(_ draft: RouteDraft) async {
+        guard let current = LocationProvider.shared.current,
+              draft.insertCurrentLocationAsStart(current) else { return }
+
+        isLoading = true
+        await draft.recalculateRoute()
+        course = RunCourse(draft: draft)
+        isLoading = false
     }
 
     // MARK: - 코스 근방 장소
