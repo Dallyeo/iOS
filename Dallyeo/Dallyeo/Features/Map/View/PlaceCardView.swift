@@ -36,7 +36,7 @@ struct PlaceCardView: View {
                             .lineLimit(1)
                     }
                     Spacer(minLength: 4)
-                    if let badge = place.badge {
+                    ForEach(place.badges, id: \.self) { badge in
                         Text(badge)
                             .font(AppFont.pretendard(10, .semibold))
                             .foregroundStyle(AppColor.primary)

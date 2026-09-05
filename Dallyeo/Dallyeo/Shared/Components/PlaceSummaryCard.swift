@@ -46,9 +46,13 @@ struct PlaceSummaryCard: View {
         }
     }
 
-    // 제목/카테고리/거리/시간/주소 + 우측 배지
+    // 제목/카테고리 → 거리·시간 → 주소, 우측에 배지
+    //
+    // 배지는 텍스트 블록의 **마지막 줄** 오른쪽에 붙는다.
+    // (Figma V05_검색결과는 거리 줄이, V05_검색상세는 주소 줄이 마지막이고
+    //  배지는 각각 그 줄 오른쪽에 있다 → 하단 정렬이면 둘 다 맞는다)
     private var headerBlock: some View {
-        HStack(alignment: .top, spacing: 10) {
+        HStack(alignment: .bottom, spacing: 10) {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(data.name)
@@ -60,17 +64,19 @@ struct PlaceSummaryCard: View {
                         .foregroundStyle(AppColor.gray700)
                 }
 
-                HStack(spacing: 8) {
-                    if let distance = data.distance {
-                        Text(distance)
-                            .font(AppFont.sf(15, .semibold))         // SF_SB_15
-                            .foregroundStyle(AppColor.gray700)
-                    }
-                    if let hours = data.businessHours {
-                        Text(hours)
-                            .font(AppFont.sf(12, .light))            // SF_L_12
-                            .foregroundStyle(AppColor.gray700)
-                            .lineLimit(1)
+                if data.distance != nil || data.businessHours != nil {
+                    HStack(spacing: 8) {
+                        if let distance = data.distance {
+                            Text(distance)
+                                .font(AppFont.sf(15, .semibold))     // SF_SB_15
+                                .foregroundStyle(AppColor.gray700)
+                        }
+                        if let hours = data.businessHours {
+                            Text(hours)
+                                .font(AppFont.sf(12, .light))        // SF_L_12
+                                .foregroundStyle(AppColor.gray700)
+                                .lineLimit(1)
+                        }
                     }
                 }
 
@@ -84,21 +90,23 @@ struct PlaceSummaryCard: View {
 
             Spacer(minLength: 8)
 
-            if !data.badges.isEmpty {
-                HStack(spacing: 6) {
-                    ForEach(data.badges, id: \.self) { badge in
-                        Text(badge)
-                            .font(AppFont.pretendard(10, .semibold)) // P_SB_10
-                            .tracking(-0.2)
-                            .foregroundStyle(AppColor.primary)
-                            .lineLimit(1)
-                            .fixedSize()
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 5)
-                            .background(AppColor.primary200, in: RoundedRectangle(cornerRadius: 8))
-                    }
-                }
-                .padding(.top, 2)
+            if !data.badges.isEmpty { badgeStrip }
+        }
+    }
+
+    /// Figma 542:940 — 칩 48×23, 글자 37×12 → 좌우 여백 5.5 / 위아래 5.5, 칩 간격 8
+    private var badgeStrip: some View {
+        HStack(spacing: 8) {
+            ForEach(data.badges, id: \.self) { badge in
+                Text(badge)
+                    .font(AppFont.pretendard(10, .semibold)) // P_SB_10
+                    .tracking(-0.2)
+                    .foregroundStyle(AppColor.primary)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .padding(.horizontal, 5.5)
+                    .padding(.vertical, 5.5)
+                    .background(AppColor.primary200, in: RoundedRectangle(cornerRadius: 8))
             }
         }
     }

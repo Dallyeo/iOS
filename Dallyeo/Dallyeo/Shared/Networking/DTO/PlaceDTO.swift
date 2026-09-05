@@ -20,6 +20,8 @@ struct PlaceSummaryDTO: Decodable, Sendable {
     let address: String?
     let thumbnailUrl: String?
     let distanceMeters: Double?  // nearby 전용
+    /// 배지 코드 (`MODEL_RESTAURANT` / `GOOD_PRICE`). 예전엔 상세에만 있었다.
+    let badges: [String]?
 
     /// 좌표가 없으면 nil. 지도에 찍을 수 없는 항목은 호출부에서 걸러낸다.
     var coordinate: CLLocationCoordinate2D? {

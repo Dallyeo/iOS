@@ -21,7 +21,8 @@ struct MapPlace: Identifiable, Sendable, Hashable {
     /// 우리 분류에 없는 종류일 때 대신 보여줄 이름 (예: 카카오의 "지하철역").
     /// 있으면 `category.label` 대신 이 값을 쓴다.
     var categoryLabelOverride: String? = nil
-    var badge: String? = nil     // 표시용 배지 이름 (PlaceBadge.label)
+    /// 표시용 배지 이름 (`PlaceBadge.label`). 모르는 코드는 매핑 단계에서 걸러진다.
+    var badges: [String] = []
 
     var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)

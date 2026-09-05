@@ -64,7 +64,7 @@ final class SearchResultViewModel {
             distance: place.distance,
             businessHours: nil,
             address: place.address,
-            badges: [],
+            badges: place.badges,
             imageURLs: place.thumbnailURL.map { [$0] } ?? []
         )
     }
@@ -82,7 +82,8 @@ final class SearchResultViewModel {
         return MapPlace(
             id: d.id, name: d.name, category: category,
             latitude: coord.latitude, longitude: coord.longitude,
-            thumbnailURL: thumb, distance: distance, address: d.address
+            thumbnailURL: thumb, distance: distance, address: d.address,
+            badges: PlaceBadge.labels(from: d.badges)
         )
     }
 

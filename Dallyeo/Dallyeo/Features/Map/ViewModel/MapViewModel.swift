@@ -143,7 +143,8 @@ final class MapViewModel: NSObject {
             id: d.id, name: d.name, category: category,
             latitude: coord.latitude, longitude: coord.longitude,
             thumbnailURL: thumb, distance: distance,
-            address: d.address, subtitle: subtitle, badge: nil
+            address: d.address, subtitle: subtitle,
+            badges: PlaceBadge.labels(from: d.badges)
         )
     }
 }
