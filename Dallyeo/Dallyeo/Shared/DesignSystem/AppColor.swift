@@ -21,7 +21,10 @@ enum AppColor {
 
     // MARK: - Gray scale
     static let gray200 = Color(hex: "#F3F3F3")  // 화면 배경
-    static let gray250 = Color(hex: "#F3F3F3")  // 세그먼트 컨테이너 (변경 ECECEC→F3F3F3)
+    /// 세그먼트 컨테이너. Figma 변수 `Gray/250` = #ECECEC.
+    /// 디자인시스템 스와치에 붙은 글자가 "F3F3F3"(=Gray/200)이라 한때 그걸 따라갔는데,
+    /// 변수와 V03/V09 실제 프레임은 #ECECEC다. 라벨 글자가 낡은 것.
+    static let gray250 = Color(hex: "#ECECEC")
     static let gray300 = Color(hex: "#CCCCCC")  // 썸네일 플레이스홀더 (변경 DFDFDF→CCCCCC)
     static let gray400 = Color(hex: "#929292")  // 경유지명 등 약한 보조 텍스트
     static let gray500 = Color(hex: "#838383")  // 보조 텍스트 / 미선택
