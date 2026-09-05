@@ -16,7 +16,8 @@ struct CourseConfirmView: View {
     @State private var panelHeight: CGFloat = 0
     /// 상태바/다이나믹 아일랜드에 마커가 가리지 않도록 확보할 상단 높이
     @State private var safeAreaTop: CGFloat = 0
-    /// "수정" → V07 경로수정으로 복귀
+    /// "수정" → V07 경로수정으로 복귀.
+    /// nil이면 수정 칩 자체를 감춘다 — 추천 코스는 손댈 수 없다.
     var onEdit: (() -> Void)?
     /// "러닝 시작하기" → V09 코스진행 (카운트다운은 V09에서).
     /// 확정된 코스를 그대로 넘겨 V09가 다시 만들지 않게 한다.
@@ -31,12 +32,13 @@ struct CourseConfirmView: View {
         self.onStart = onStart
     }
 
-    /// 추천 코스(BE)로 진입
+    /// 추천 코스(BE)로 진입.
+    /// 수정을 받지 않는다 — 코스를 고치면 더 이상 그 코스가 아니게 되고,
+    /// 완주율·업적이 기준 삼는 원본 거리·경유지가 무너진다.
     init(courseId: String,
-         onEdit: (() -> Void)? = nil,
          onStart: ((RunCourse) -> Void)? = nil) {
         _viewModel = State(initialValue: CourseConfirmViewModel(courseId: courseId))
-        self.onEdit = onEdit
+        self.onEdit = nil
         self.onStart = onStart
     }
 

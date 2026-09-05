@@ -49,14 +49,13 @@ final class LocationInfoViewModel {
         PlaceBadge.labels(from: detail?.badges)
     }
 
-    /// 가로 스크롤 이미지 목록. 상세 imageUrl + 카드 썸네일 (중복/nil 제거, http→https).
+    /// 표시할 사진 한 장. 상세 이미지를 우선하고 없으면 카드 썸네일을 쓴다.
+    ///
+    /// 예전에는 둘 다 넣어 가로 스크롤로 보여줬는데, 같은 장소 사진이 두 장
+    /// 겹쳐 나오고 두 번째가 화면 밖으로 걸쳐 보여 어색했다. 팀 결정으로 한 장만 쓴다.
     var imageURLs: [String] {
-        var urls: [String] = []
-        if let d = detail?.imageUrl { urls.append(d) }
-        if let t = place.thumbnailURL { urls.append(t) }
-        return urls
-            .map { $0.replacingOccurrences(of: "http://", with: "https://") }
-            .reduce(into: [String]()) { acc, u in if !acc.contains(u) { acc.append(u) } }
+        guard let url = detail?.imageUrl ?? place.thumbnailURL else { return [] }
+        return [url.replacingOccurrences(of: "http://", with: "https://")]
     }
 
     /// 공용 카드 데이터

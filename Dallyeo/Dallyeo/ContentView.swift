@@ -97,10 +97,9 @@ struct ContentView: View {
             )
         case .courseConfirm(let courseId):
             if let courseId {
-                // 추천 코스 — 경로/지점 모두 BE에서 로드
+                // 추천 코스 — 경로/지점 모두 BE에서 로드. 수정 불가.
                 CourseConfirmView(
                     courseId: courseId,
-                    onEdit: { path.removeLast() },
                     onStart: { course in
                         runningCourse = course
                         path.append(.running(courseId: nil))

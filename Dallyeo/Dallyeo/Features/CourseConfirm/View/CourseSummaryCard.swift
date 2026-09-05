@@ -50,15 +50,18 @@ struct CourseSummaryCard: View {
 
                 Spacer(minLength: 0)
 
-                Button { onEdit?() } label: {
-                    Text("수정")
-                        .font(AppFont.pretendard(15, .medium))
-                        .tracking(AppFont.tracking(-2, size: 15))
-                        .foregroundStyle(AppColor.primary)
-                        .frame(width: 55, height: 26)
-                        .background(AppColor.primary200, in: Capsule())
+                // 추천 코스는 onEdit이 없다 → 칩 자체를 그리지 않는다.
+                if let onEdit {
+                    Button(action: onEdit) {
+                        Text("수정")
+                            .font(AppFont.pretendard(15, .medium))
+                            .tracking(AppFont.tracking(-2, size: 15))
+                            .foregroundStyle(AppColor.primary)
+                            .frame(width: 55, height: 26)
+                            .background(AppColor.primary200, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
             .frame(height: headerRowHeight)
 
