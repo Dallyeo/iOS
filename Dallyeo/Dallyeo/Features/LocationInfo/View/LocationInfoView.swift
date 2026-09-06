@@ -16,7 +16,10 @@ struct LocationInfoView: View {
     /// 사진 전체화면 뷰어 시작 인덱스 (nil이면 닫힘)
     @State private var photoViewerIndex: Int?
     /// 바텀시트 현재 단. 기본은 중간.
-    @State private var sheetDetent: PresentationDetent = .height(340)
+    @State private var sheetDetent: SheetDetent = .height(340)
+
+    /// 스펙 V06: 꽉참/중간/최소 3단 고정.
+    private static let detents: [SheetDetent] = [.height(minSheetHeight), .height(340), .fromSafeTop(10)]
     var bottomSheetVisible: Bool = true
     /// 역할 설정 완료 → V07 경로수정뷰로
     var onRoleSet: (() -> Void)?
@@ -60,18 +63,10 @@ struct LocationInfoView: View {
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
-        .sheet(isPresented: .constant(bottomSheetVisible)) {
+        .mapBottomSheet(isPresented: bottomSheetVisible,
+                        detents: Self.detents,
+                        selection: $sheetDetent) {
             detailSheet
-                // 스펙 V06: 꽉참/중간/최소 3단 고정.
-                // 최소는 "지점명 + 출발/경유/도착만 남는" 높이.
-                // detent만 나열하면 가장 낮은 단으로 열려서, 기본은 중간으로 고정한다.
-                .presentationDetents(
-                    [.height(Self.minSheetHeight), .height(340), .large],
-                    selection: $sheetDetent
-                )
-                .presentationDragIndicator(.visible)
-                .presentationBackgroundInteraction(.enabled(upThrough: .large))
-                .interactiveDismissDisabled()
         }
         .task { await viewModel.load() }
     }

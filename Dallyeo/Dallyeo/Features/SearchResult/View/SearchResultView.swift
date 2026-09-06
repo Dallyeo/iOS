@@ -11,7 +11,11 @@ struct SearchResultView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel: SearchResultViewModel
-    @State private var sheetDetent: PresentationDetent = .medium
+    @State private var sheetDetent: SheetDetent = .fraction(0.5)
+
+    /// 최소(120)로 열면 카드가 거의 가려지고 남은 영역이 시트 드래그 영역과 겹쳐,
+    /// 결과를 눌러도 선택이 아니라 시트 확장으로 먹힌다. Figma(542:925)도 절반쯤 열린 상태가 기본.
+    private static let detents: [SheetDetent] = [.height(120), .fraction(0.5), .fromSafeTop(10)]
 
     /// 네비게이션 최상단일 때만 바텀시트 표시 (push된 화면 위 시트 충돌 방지)
     var bottomSheetVisible: Bool = true
@@ -47,16 +51,10 @@ struct SearchResultView: View {
         .overlay(alignment: .top) { searchBar }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
-        .sheet(isPresented: .constant(bottomSheetVisible)) {
+        .mapBottomSheet(isPresented: bottomSheetVisible,
+                        detents: Self.detents,
+                        selection: $sheetDetent) {
             resultSheet
-                // 기본을 medium으로 연다. 최소(120pt)로 열면 카드가 거의 가려지고
-                // 남은 영역이 시트 드래그 영역과 겹쳐, 결과를 눌러도 선택이 아니라
-                // 시트 확장으로 먹힌다. Figma(542:925)도 절반쯤 열린 상태가 기본.
-                .presentationDetents([.height(120), .medium, .large], selection: $sheetDetent)
-                .presentationDragIndicator(.visible)
-                .presentationBackground(AppColor.white)
-                .presentationBackgroundInteraction(.enabled(upThrough: .large))
-                .interactiveDismissDisabled()
         }
         .task {
             await viewModel.search()

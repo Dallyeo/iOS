@@ -7,14 +7,6 @@
 
 import SwiftUI
 
-// 검색바 아래부터 채우는 커스텀 detent
-struct MapFullDetent: CustomPresentationDetent {
-    static func height(in context: Context) -> CGFloat? {
-        // 전체 높이에서 검색바 영역(상단 safe area + 검색바 52 + 패딩 16) 제외
-        context.maxDetentValue - 68
-    }
-}
-
 struct MapView: View {
 
     @State private var viewModel = MapViewModel()
@@ -26,8 +18,11 @@ struct MapView: View {
     /// 지도가 네비게이션 최상단일 때만 바텀시트 표시 (push된 화면 위로 시트가 뜨는 충돌 방지)
     var bottomSheetVisible: Bool = true
 
-    /// 바텀시트 현재 detent. 기본은 카드 1줄이 보이는 위치.
-    @State private var sheetDetent: PresentationDetent = .height(380)
+    /// 바텀시트 현재 단. 기본은 카드 1줄이 보이는 위치.
+    @State private var sheetDetent: SheetDetent = .height(380)
+
+    /// 최소(160): 아래로 내렸을 때. 기본(380): 카드 1줄. 최대: 검색바 아래까지(상단 68 비움).
+    private static let detents: [SheetDetent] = [.height(160), .height(380), .fromSafeTop(68)]
 
     var body: some View {
         KakaoMapView(
@@ -46,34 +41,27 @@ struct MapView: View {
                 Spacer()
             }
         }
-        .sheet(isPresented: .constant(bottomSheetVisible)) {
+        .mapBottomSheet(isPresented: bottomSheetVisible,
+                        detents: Self.detents,
+                        selection: $sheetDetent) {
             MapBottomSheetView(
                 selectedSegment: $viewModel.selectedSegment,
                 places: viewModel.currentPlaces,
                 isLoading: viewModel.isLoading,
                 onSelectPlace: onSelectPlace
             )
-            // 알럿은 항상 떠있는 시트 콘텐츠에 부착 (맵 루트에 붙이면 sheet와 표시 충돌)
-            .alert("위치 권한이 필요해요", isPresented: $viewModel.showPermissionAlert) {
-                Button("취소", role: .cancel) {}
-                Button("설정으로 이동") { viewModel.openAppSettings() }
-            } message: {
-                Text("주변 장소를 보려면 설정 > 달여에서 위치 접근을 허용해 주세요.")
-            }
-            .alert("위치를 가져올 수 없어요", isPresented: $viewModel.showGPSErrorAlert) {
-                Button("취소", role: .cancel) {}
-                Button("재시도") { viewModel.retryLocation() }
-            } message: {
-                Text("GPS 신호를 확인하고 다시 시도해 주세요.")
-            }
-            // 최소(160): 아래로 내렸을 때만. 기본(380): 카드 1줄. 최대: 검색바 아래까지.
-            .presentationDetents(
-                [.height(160), .height(380), .custom(MapFullDetent.self)],
-                selection: $sheetDetent
-            )
-            .presentationDragIndicator(.visible)
-            .presentationBackgroundInteraction(.enabled(upThrough: .custom(MapFullDetent.self)))
-            .interactiveDismissDisabled()
+        }
+        .alert("위치 권한이 필요해요", isPresented: $viewModel.showPermissionAlert) {
+            Button("취소", role: .cancel) {}
+            Button("설정으로 이동") { viewModel.openAppSettings() }
+        } message: {
+            Text("주변 장소를 보려면 설정 > 달여에서 위치 접근을 허용해 주세요.")
+        }
+        .alert("위치를 가져올 수 없어요", isPresented: $viewModel.showGPSErrorAlert) {
+            Button("취소", role: .cancel) {}
+            Button("재시도") { viewModel.retryLocation() }
+        } message: {
+            Text("GPS 신호를 확인하고 다시 시도해 주세요.")
         }
         .task {
             viewModel.requestLocationIfNeeded()
