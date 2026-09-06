@@ -57,7 +57,6 @@ struct LocationInfoView: View {
                 onEditQuery: { onEditQuery?() ?? dismiss() }, // → V04
                 onClose: { onClose?() }                       // → V03
             )
-            .padding(.top, 8)
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)

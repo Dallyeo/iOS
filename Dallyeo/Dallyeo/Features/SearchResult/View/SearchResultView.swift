@@ -43,10 +43,8 @@ struct SearchResultView: View {
             showsPlaceMarkers: true
         )
         .ignoresSafeArea()
-        .overlay(alignment: .top) {
-            searchBar
-                .padding(.top, 8)
-        }
+        // 헤더는 자기 패널(상태바까지 덮는 #FAFAFA)을 직접 그린다 — 여백을 덧대지 않는다.
+        .overlay(alignment: .top) { searchBar }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: .constant(bottomSheetVisible)) {
