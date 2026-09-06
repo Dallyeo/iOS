@@ -257,35 +257,31 @@ extension KakaoMapView {
 
             // 디자인시스템 마커 에셋(SVG). 앵커는 각 도형의 "뾰족한 끝"이 실제 좌표에
             // 놓이도록 맞춘다. 그래야 경로선 시작/끝점과 마커 끝이 붙는다.
-            let tip = CGPoint(x: 0.5, y: 0.95)          // 아래로 뾰족한 물방울
-            addPoiStyle(manager, styleID: poiStyleID, image: asset("marker_pin"), anchor: tip)
-            addPoiStyle(manager, styleID: "m_place_attraction", image: asset("marker_attraction"), anchor: tip)
+            //
+            // 에셋마다 도형 아래 여백이 달라 앵커를 하나로 묶을 수 없다.
+            // 아래 값은 각 SVG를 렌더해 viewBox 대비 도형 아래끝을 실측한 것:
+            //   pin 0.937 / destination 0.961              → 여백 있음
+            //   start·attraction·convenience 1.0           → 여백 없음(디자인시스템 신규 마커)
+            let tipPadded = CGPoint(x: 0.5, y: 0.96)   // 아래 여백이 있는 물방울
+            let tipFlush  = CGPoint(x: 0.5, y: 1.0)    // 도형이 viewBox 바닥에 닿는 물방울
+            addPoiStyle(manager, styleID: poiStyleID, image: asset("marker_pin"), anchor: tipPadded)
+            addPoiStyle(manager, styleID: "m_place_attraction", image: asset("marker_attraction"), anchor: tipFlush)
             // 음식점 전용 마커는 디자인에 없음 → 중립 pin (임의 매핑 안 함)
-            addPoiStyle(manager, styleID: "m_place_restaurant", image: asset("marker_pin"), anchor: tip)
-            addPoiStyle(manager, styleID: "m_place_convenience", image: asset("marker_convenience"), anchor: tip)
+            addPoiStyle(manager, styleID: "m_place_restaurant", image: asset("marker_pin"), anchor: tipPadded)
+            addPoiStyle(manager, styleID: "m_place_convenience", image: asset("marker_convenience"), anchor: tipFlush)
             // 진행중 현재위치(디자인시스템 822:1145)는 원형이라 중앙 앵커
             addPoiStyle(manager, styleID: "m_current", image: asset("marker_current"),
                         anchor: CGPoint(x: 0.5, y: 0.5))
-            // marker_start.svg는 뾰족한 끝이 위인 도형이라 180도 뒤집어 아래로 향하게 한다.
-            addPoiStyle(manager, styleID: "m_start", image: flipped(asset("marker_start")), anchor: tip)
+            // 디자인시스템 `경로/출발`(822:379) 그대로 — 뾰족한 끝이 아래다.
+            // 예전 에셋은 180도 뒤집힌 채로 들어가 있어 코드에서 되돌려 그렸는데,
+            // 에셋을 바로잡았으므로 회전이 필요 없다.
+            addPoiStyle(manager, styleID: "m_start", image: asset("marker_start"), anchor: tipFlush)
             addPoiStyle(manager, styleID: "m_dest", image: asset("marker_destination"),
-                        anchor: CGPoint(x: 0.5, y: 0.97))
+                        anchor: tipPadded)
             for n in 1...5 {
                 // 번호 원은 지점 위 중앙 정렬
                 addPoiStyle(manager, styleID: "m_wp\(n)", image: waypointMarkerImage(n),
                             anchor: CGPoint(x: 0.5, y: 0.5))
-            }
-        }
-
-        /// 이미지를 180도 회전. 뾰족한 끝 방향을 맞출 때 쓴다.
-        private func flipped(_ image: UIImage) -> UIImage {
-            let format = UIGraphicsImageRendererFormat()
-            format.scale = image.scale
-            return UIGraphicsImageRenderer(size: image.size, format: format).image { ctx in
-                ctx.cgContext.translateBy(x: image.size.width / 2, y: image.size.height / 2)
-                ctx.cgContext.rotate(by: .pi)
-                image.draw(in: CGRect(x: -image.size.width / 2, y: -image.size.height / 2,
-                                      width: image.size.width, height: image.size.height))
             }
         }
 
