@@ -143,6 +143,11 @@ extension KakaoMapView {
             self.container = container
             controller = KMController(viewContainer: container)
             controller?.delegate = self
+            // ProMotion(120Hz) 기기에서 지도만 60fps로 그려지는 것을 막는다.
+            // SDK 기본값이 꺼짐이라, 켜지 않으면 화면 나머지는 120Hz로 도는데
+            // 지도만 절반 속도로 따라와 스와이프가 굼뜨게 느껴진다.
+            // 60Hz 기기에서는 SDK가 알아서 무시한다(`KMViewContainer.proMotionDisplay`).
+            controller?.proMotionSupport = true
             _ = controller?.prepareEngine()
             controller?.activateEngine()
         }
