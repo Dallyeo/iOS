@@ -151,9 +151,14 @@ final class DallYeoBridge: NSObject, WKScriptMessageHandler {
         // 기존 필드는 그대로 둔다 — 웹이 조회 방식으로 옮기기 전에도 화면이 떠야 한다.
         if let saved {
             payload["recordId"] = saved.recordId
+            if let imageUrl = saved.imageUrl { payload["imageUrl"] = imageUrl }
             payload["newAchievements"] = saved.newAchievements.map { achievement in
                 var item: [String: Any] = ["code": achievement.code, "name": achievement.name]
+                if let c = achievement.category { item["category"] = c }
+                if let s = achievement.sortOrder { item["sortOrder"] = s }
                 if let d = achievement.description { item["description"] = d }
+                if let on = achievement.iconOnUrl { item["iconOnUrl"] = on }
+                if let off = achievement.iconOffUrl { item["iconOffUrl"] = off }
                 if let u = achievement.unlocked { item["unlocked"] = u }
                 if let at = achievement.unlockedAt { item["unlockedAt"] = at }
                 return item
@@ -171,11 +176,13 @@ final class DallYeoBridge: NSObject, WKScriptMessageHandler {
     /// 저장 실패 사유를 웹이 분기할 수 있는 문자열로 바꾼다.
     ///  - `notSignedIn`: 게스트. "로그인하면 기록이 남아요" 유도.
     ///  - `notEnoughData`: 거리·시간이 0이라 애초에 안 보냄.
+    ///  - `noSnapshot`: 지도 캡처 실패. 이미지가 필수라 저장을 시도조차 못 함.
     ///  - `network`: 요청 실패(서버 오류 포함). 재시도 안내.
     private static func reasonCode(_ failure: RunRecorder.Failure) -> String {
         switch failure {
         case .notSignedIn:   "notSignedIn"
         case .notEnoughData: "notEnoughData"
+        case .noSnapshot:    "noSnapshot"
         case .network:       "network"
         }
     }

@@ -87,27 +87,42 @@ enum DallyeoAPI {
 
     // MARK: - 러닝 기록
 
-    /// POST /runs 🔒
+    /// POST /runs 🔒 (multipart/form-data)
+    ///
+    /// `run`(JSON) + `image`(파일) **두 파트를 한 요청에** 보낸다. 이미지는 필수라
+    /// 누락하면 400이다. JSON으로 보내면 서버가 500을 준다.
     ///
     /// 저장할 때 서버가 업적까지 판정해 **이번에 처음 딴 것만** `newAchievements`로 준다.
     /// 조회 API에는 그 필드가 없어서, 여기서 못 받으면 결과창 도장을 다시 얻을 길이 없다.
-    static func saveRun(_ body: RunSaveRequest, accessToken: String) async throws -> RunRecordDTO {
-        try await client.post("/runs", body: body, bearer: accessToken)
+    static func saveRun(
+        _ body: RunSaveRequest, jpeg: Data, accessToken: String
+    ) async throws -> RunRecordDTO {
+        let json: Data
+        do {
+            json = try JSONEncoder().encode(body)
+        } catch {
+            throw APIClientError.decoding(error)
+        }
+        return try await client.upload(
+            "/runs",
+            parts: [
+                .json(name: "run", data: json),
+                .file(name: "image", fileName: "route.jpg", mimeType: "image/jpeg", data: jpeg)
+            ],
+            bearer: accessToken
+        )
     }
 
     /// POST /runs/{id}/image 🔒
     ///
-    /// 저장(7.1)으로 받은 `id`에 기록 이미지를 붙인다. 응답에 `imageUrl`이 채워져 온다.
-    /// 허용 형식 jpeg/png/webp/heic/heif, 최대 10MB. 재호출하면 교체된다.
-    static func uploadRunImage(
+    /// 이미 저장된 기록의 이미지를 **교체**한다. 최초 이미지는 저장(7.1) 때 함께 올라가므로
+    /// 여기는 다시 올릴 때만 쓴다. 허용 형식 jpeg/png/webp/heic/heif, 최대 10MB.
+    static func replaceRunImage(
         runId: Int, jpeg: Data, accessToken: String
     ) async throws -> RunRecordDTO {
         try await client.upload(
             "/runs/\(runId)/image",
-            fieldName: "image",
-            fileName: "route.jpg",
-            mimeType: "image/jpeg",
-            data: jpeg,
+            parts: [.file(name: "image", fileName: "route.jpg", mimeType: "image/jpeg", data: jpeg)],
             bearer: accessToken
         )
     }

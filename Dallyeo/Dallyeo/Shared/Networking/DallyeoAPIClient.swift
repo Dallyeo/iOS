@@ -84,16 +84,19 @@ struct DallyeoAPIClient {
 
     // MARK: - 파일 업로드
 
-    /// 파일 하나를 `multipart/form-data`로 올린다.
+    /// `multipart/form-data` 파트 하나.
     ///
-    /// 러닝 기록 이미지(`POST /runs/{id}/image`)용. 기록 저장은 JSON이고 이미지는
-    /// 파일이라 한 요청에 못 싣는다 — API.md 7.2도 2단계 흐름으로 정의돼 있다.
+    /// 러닝 저장(API.md 7.1)은 JSON 파트와 파일 파트를 **한 요청에 같이** 보낸다.
+    enum MultipartPart: Sendable {
+        /// 이름 붙은 JSON 파트. 파일명 없이 `Content-Type: application/json`만 붙는다.
+        case json(name: String, data: Data)
+        case file(name: String, fileName: String, mimeType: String, data: Data)
+    }
+
+    /// 여러 파트를 `multipart/form-data`로 올린다.
     func upload<T: Decodable>(
         _ path: String,
-        fieldName: String,
-        fileName: String,
-        mimeType: String,
-        data fileData: Data,
+        parts: [MultipartPart],
         bearer: String? = nil,
         as type: T.Type = T.self
     ) async throws -> T {
@@ -104,11 +107,21 @@ struct DallyeoAPIClient {
 
         var body = Data()
         func append(_ string: String) { body.append(Data(string.utf8)) }
-        append("--\(boundary)\r\n")
-        append("Content-Disposition: form-data; name=\"\(fieldName)\"; filename=\"\(fileName)\"\r\n")
-        append("Content-Type: \(mimeType)\r\n\r\n")
-        body.append(fileData)
-        append("\r\n--\(boundary)--\r\n")
+        for part in parts {
+            append("--\(boundary)\r\n")
+            switch part {
+            case .json(let name, let data):
+                append("Content-Disposition: form-data; name=\"\(name)\"\r\n")
+                append("Content-Type: application/json; charset=UTF-8\r\n\r\n")
+                body.append(data)
+            case .file(let name, let fileName, let mimeType, let data):
+                append("Content-Disposition: form-data; name=\"\(name)\"; filename=\"\(fileName)\"\r\n")
+                append("Content-Type: \(mimeType)\r\n\r\n")
+                body.append(data)
+            }
+            append("\r\n")
+        }
+        append("--\(boundary)--\r\n")
         request.httpBody = body
 
         let data = try await send(request)
