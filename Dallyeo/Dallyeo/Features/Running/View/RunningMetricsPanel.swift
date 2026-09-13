@@ -23,8 +23,9 @@ struct RunningMetricsPanel: View {
     // Figma 실측
     private let barHeight: CGFloat = 7
     private let markerSize: CGFloat = 26
-    /// 화살표 상단 y(644) - 바 상단 y(640)
-    private let markerTopInset: CGFloat = 4
+    /// 화살표 상단이 바 상단보다 19pt 위. Figma 렌더에서 바가 화살표 박스의
+    /// y=19 지점에 걸리는 것을 실측한 값 — 촉이 바에 닿는다.
+    private let markerTopOffset: CGFloat = -19
     private let metricsWidth: CGFloat = 310
     private let columnSpacing: CGFloat = 50
     private let rowSpacing: CGFloat = 3
@@ -49,26 +50,29 @@ struct RunningMetricsPanel: View {
         )
     }
 
-    // MARK: - 진행 바 (배경 Primary/200, 채움 Primary/500)
+    // MARK: - 진행 바
 
+    /// 남은 구간이 진초록(Primary/500), 지나온 구간이 연초록(Primary/200).
+    /// 지도에서 지나온 경로를 지우는 것과 같은 방향이다 — 처음엔 바 전체가
+    /// 진초록이고 달릴수록 왼쪽부터 연초록으로 바뀐다.
     private var progressBar: some View {
         GeometryReader { geo in
             let fraction = min(max(progress, 0), 1)
             ZStack(alignment: .leading) {
-                Rectangle().fill(AppColor.primary200)
+                Rectangle().fill(AppColor.primary500)
                 Rectangle()
-                    .fill(AppColor.primary500)
+                    .fill(AppColor.primary200)
                     .frame(width: geo.size.width * fraction)
             }
             // 채움 끝에서 현재 위치를 가리키는 화살표 (Figma 956:2374).
             // 바 아래 흰 패널 위로 넘쳐 그려져야 해서 오버레이로 얹는다.
             .overlay(alignment: .topLeading) {
                 progressMarker
-                    // 촉이 바 안(위에서 4pt)에 오도록. 가로는 화살표 중심을 채움 끝에 맞추되,
-                    // 시작·끝에서 화면 밖으로 잘리지 않게 양 끝을 물린다.
+                    // 화살표는 바 **위**(지도 쪽)에 서서 아래를 가리킨다.
+                    // 가로는 중심을 경계에 맞추되, 양 끝에서 잘리지 않게 물린다.
                     .offset(x: min(max(geo.size.width * fraction - markerSize / 2, 0),
                                    geo.size.width - markerSize),
-                            y: markerTopInset)
+                            y: markerTopOffset)
             }
             .animation(.linear(duration: 0.3), value: fraction)
         }
