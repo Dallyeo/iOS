@@ -142,6 +142,15 @@ final class DallYeoBridge: NSObject, WKScriptMessageHandler {
         if let courseId = result.courseId {
             payload["courseId"] = courseId
         }
+        // 출발·도착 좌표. 결과화면이 `endLocation`으로 주변 맛집(`/places/nearby`)을
+        // 조회하는데, 이 값이 없으면 쿼리 자체가 비활성화돼 맛집이 안 뜬다.
+        // 러닝 기록과 맛집은 성격이 다른 데이터라 웹이 각각 따로 요청한다.
+        if let start = result.traveledPath.first {
+            payload["startLocation"] = ["lat": start.latitude, "lng": start.longitude]
+        }
+        if let end = result.traveledPath.last {
+            payload["endLocation"] = ["lat": end.latitude, "lng": end.longitude]
+        }
         // 저장 성공 시에만 실린다.
         //  - recordId: 웹이 `GET /runs/{id}`로 다시 불러올 수 있는 키.
         //    브릿지로 넘긴 값은 웹뷰가 리로드되면 날아가지만 이건 남는다.
@@ -151,7 +160,7 @@ final class DallYeoBridge: NSObject, WKScriptMessageHandler {
         // 기존 필드는 그대로 둔다 — 웹이 조회 방식으로 옮기기 전에도 화면이 떠야 한다.
         if let saved {
             payload["recordId"] = saved.recordId
-            if let imageUrl = saved.imageUrl {
+            if let imageUrl = saved.imageUrl.map(Self.absoluteURLString) {
                 payload["imageUrl"] = imageUrl
                 // 웹 결과화면은 `staticMapImageUrl`이라는 이름으로 읽는다(서버는 `imageUrl`).
                 // 어느 쪽이 정리되든 화면이 뜨도록 둘 다 싣는다.
@@ -162,8 +171,9 @@ final class DallYeoBridge: NSObject, WKScriptMessageHandler {
                 if let c = achievement.category { item["category"] = c }
                 if let s = achievement.sortOrder { item["sortOrder"] = s }
                 if let d = achievement.description { item["description"] = d }
-                if let on = achievement.iconOnUrl { item["iconOnUrl"] = on }
-                if let off = achievement.iconOffUrl { item["iconOffUrl"] = off }
+                // 도장 이미지도 서버 기준 경로라 절대 URL로 바꿔 넘긴다.
+                if let on = achievement.iconOnUrl { item["iconOnUrl"] = Self.absoluteURLString(on) }
+                if let off = achievement.iconOffUrl { item["iconOffUrl"] = Self.absoluteURLString(off) }
                 if let u = achievement.unlocked { item["unlocked"] = u }
                 if let at = achievement.unlockedAt { item["unlockedAt"] = at }
                 return item
@@ -176,6 +186,15 @@ final class DallYeoBridge: NSObject, WKScriptMessageHandler {
             payload["saveFailReason"] = Self.reasonCode(saveFailure)
         }
         emit("runCompleted", payload: payload)
+    }
+
+    /// 서버가 주는 이미지 경로를 웹이 그대로 `<img src>`에 쓸 수 있는 절대 URL로 바꾼다.
+    ///
+    /// 서버는 `/uploads/runs/….jpg` 같은 **서버 기준 절대 경로**를 준다. 웹은 다른
+    /// 도메인에서 뜨므로 이대로 넘기면 웹 도메인 기준으로 풀려 404가 난다.
+    private static func absoluteURLString(_ path: String) -> String {
+        guard !path.hasPrefix("http://"), !path.hasPrefix("https://") else { return path }
+        return URL(string: path, relativeTo: APIConfig.baseURL)?.absoluteString ?? path
     }
 
     /// 저장 실패 사유를 웹이 분기할 수 있는 문자열로 바꾼다.
