@@ -151,7 +151,12 @@ final class DallYeoBridge: NSObject, WKScriptMessageHandler {
         // 기존 필드는 그대로 둔다 — 웹이 조회 방식으로 옮기기 전에도 화면이 떠야 한다.
         if let saved {
             payload["recordId"] = saved.recordId
-            if let imageUrl = saved.imageUrl { payload["imageUrl"] = imageUrl }
+            if let imageUrl = saved.imageUrl {
+                payload["imageUrl"] = imageUrl
+                // 웹 결과화면은 `staticMapImageUrl`이라는 이름으로 읽는다(서버는 `imageUrl`).
+                // 어느 쪽이 정리되든 화면이 뜨도록 둘 다 싣는다.
+                payload["staticMapImageUrl"] = imageUrl
+            }
             payload["newAchievements"] = saved.newAchievements.map { achievement in
                 var item: [String: Any] = ["code": achievement.code, "name": achievement.name]
                 if let c = achievement.category { item["category"] = c }
