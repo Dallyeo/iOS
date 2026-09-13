@@ -142,6 +142,15 @@ final class DallYeoBridge: NSObject, WKScriptMessageHandler {
         if let courseId = result.courseId {
             payload["courseId"] = courseId
         }
+        // 출발지·도착지 이름. 결과화면의 `옥돌해변 → 몽돌해변` 줄인데,
+        // 웹은 **둘 다 있을 때만** 그린다(하나만 오면 "지정된 위치"로 대체).
+        // 서버는 좌표만 저장하므로 앱이 안 넘기면 얻을 데가 없다.
+        if let start = result.startPlaceName, !start.isEmpty {
+            payload["startPlaceName"] = start
+        }
+        if let end = result.endPlaceName, !end.isEmpty {
+            payload["endPlaceName"] = end
+        }
         // 출발·도착 좌표. 결과화면이 `endLocation`으로 주변 맛집(`/places/nearby`)을
         // 조회하는데, 이 값이 없으면 쿼리 자체가 비활성화돼 맛집이 안 뜬다.
         // 러닝 기록과 맛집은 성격이 다른 데이터라 웹이 각각 따로 요청한다.

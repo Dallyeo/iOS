@@ -274,6 +274,8 @@ final class RunningViewModel: NSObject {
             completionRate: completionRate,
             traveledPath: traveledPath,
             courseId: course.backendCourseId,
+            startPlaceName: course.startPoint?.name,
+            endPlaceName: course.destinationPoint?.name,
             // 카운트다운 중 종료하면 시작 시각이 없다. 그때는 진행 시간만큼 거슬러 잡는다.
             startedAt: startedAt ?? finished.addingTimeInterval(-Double(elapsedSec)),
             finishedAt: finished

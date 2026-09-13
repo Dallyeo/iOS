@@ -21,6 +21,10 @@ struct RunResult {
 
     /// BE 추천 코스를 달렸으면 그 id, 직접 만든 경로면 nil.
     let courseId: String?
+    /// 출발지·도착지 이름. 결과 화면이 `옥돌해변 → 몽돌해변`으로 보여준다.
+    /// 서버는 이 값을 저장하지 않아(좌표만 남는다) 앱이 넘겨야 나온다.
+    let startPlaceName: String?
+    let endPlaceName: String?
     /// 카운트다운이 끝나고 실제로 달리기 시작한 시각.
     let startedAt: Date
     /// 종료(또는 도착지 도달) 시각.
