@@ -62,6 +62,8 @@ final class MapViewModel: NSObject {
         super.init()
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
+        // 앱이 이미 알고 있는 위치가 있으면 GPS를 기다리지 않고 바로 주변을 부른다.
+        userLocation = LocationProvider.shared.current
     }
 
     func requestLocationIfNeeded() {
@@ -103,17 +105,22 @@ final class MapViewModel: NSObject {
 
     private var didLoadNearby = false
 
-    /// 추천 장소 로드. 현위치 있으면 주변(nearby), 없으면 기본 지역(군산).
+    /// 추천 장소 로드 — **현위치 주변만** 보여준다.
+    ///
+    /// 위치가 아직 없으면 아무것도 부르지 않고 로딩 상태로 둔다. 예전에는 그 사이
+    /// 기본 지역(군산) 목록을 채워 넣었는데, 서울에서 열어도 군산이 떴다가 잠시 뒤
+    /// 주변으로 바뀌어서 더 헷갈렸다. 처음부터 주변만 보여주는 게 맞다.
     func loadPlaces() async {
+        guard let loc = userLocation else {
+            isLoading = true   // 위치가 잡히면 델리게이트가 다시 부른다
+            return
+        }
         isLoading = true
         defer { isLoading = false }
         do {
-            let dtos: [PlaceSummaryDTO]
-            if let loc = userLocation {
-                dtos = try await DallyeoAPI.nearbyPlaces(lat: loc.latitude, lng: loc.longitude, radius: 3000)
-            } else {
-                dtos = try await DallyeoAPI.places(region: "GUNSAN")
-            }
+            let dtos = try await DallyeoAPI.nearbyPlaces(
+                lat: loc.latitude, lng: loc.longitude, radius: 3000
+            )
             // 좌표 없는 항목은 지도에 찍을 수 없어 제외
             let places = dtos.compactMap { Self.mapPlace(from: $0) }
             attractions = places.filter { $0.category.group == .attraction }
@@ -173,6 +180,8 @@ extension MapViewModel: CLLocationManagerDelegate {
                 manager.startUpdatingLocation()
             case .denied, .restricted:
                 self.showPermissionAlert = true
+                // 위치를 영영 못 받으므로 로딩을 끝낸다. 안 그러면 스피너가 계속 돈다.
+                self.isLoading = false
             default:
                 break
             }
@@ -182,6 +191,8 @@ extension MapViewModel: CLLocationManagerDelegate {
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         Task { @MainActor in
             self.showGPSErrorAlert = true
+            // 재시도 버튼이 다시 로드를 걸어 준다. 그때까지 스피너를 세운다.
+            self.isLoading = false
         }
     }
 }
