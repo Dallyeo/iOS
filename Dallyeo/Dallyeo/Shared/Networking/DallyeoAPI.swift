@@ -48,7 +48,7 @@ enum DallyeoAPI {
 
     // `/places/*`는 TourAPI를 실시간으로 호출해 간헐적으로 502가 난다.
     // API.md 9-3이 1~2회 재시도를 권장한다(두 번째부터는 서버 캐시라 빠르다).
-    private static let placesRetries = 1
+    private static let placesRetries = 2
 
     /// GET /places?region=&category=
     static func places(region: String, category: String? = nil) async throws -> [PlaceSummaryDTO] {
