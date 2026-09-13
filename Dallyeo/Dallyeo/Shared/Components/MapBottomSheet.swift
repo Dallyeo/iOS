@@ -64,11 +64,22 @@ private struct MapBottomSheetModifier<Sheet: View>: ViewModifier {
     @State private var dragTranslation: CGFloat = 0
     @State private var containerHeight: CGFloat = 0
     @State private var safeTop: CGFloat = 0
-    @State private var safeBottom: CGFloat = 0
 
-    /// 드래그 손잡이 영역 높이. 이 영역에서만 시트 크기를 바꾼다.
-    /// 시트 본문까지 제스처를 걸면 안쪽 ScrollView와 싸운다.
-    private let grabberAreaHeight: CGFloat = 28
+    /// 손잡이가 차지하는 높이. Figma(542:929)에서 캡슐이 y 9~14에 있다.
+    /// 여기가 두꺼우면 그만큼 본문이 밀려 내려간다.
+    private let grabberAreaHeight: CGFloat = 14
+
+    /// 화면 하단 안전영역(홈 인디케이터).
+    ///
+    /// GeometryProxy로 읽으면 0이 나온다 — 시트가 `ignoresSafeArea()`를 건 지도 위에
+    /// 얹혀 있어서다. 그대로 두면 출발/경유/도착 버튼이 화면 맨 아래에 붙어 잘린다.
+    /// 그래서 창에서 직접 읽는다.
+    private var safeBottom: CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive }?
+            .keyWindow?.safeAreaInsets.bottom ?? 0
+    }
 
     func body(content: Content) -> some View {
         content
@@ -79,7 +90,6 @@ private struct MapBottomSheetModifier<Sheet: View>: ViewModifier {
             } action: {
                 containerHeight = $0.height
                 safeTop = $0.top
-                safeBottom = $0.bottom
             }
             .overlay(alignment: .bottom) {
                 if isPresented, containerHeight > 0 {
@@ -128,21 +138,27 @@ private struct MapBottomSheetModifier<Sheet: View>: ViewModifier {
         .clipped()
     }
 
-    /// 드래그 손잡이 (Figma: 50×5 캡슐)
+    /// 드래그 손잡이 (Figma 542:929 — 50×5 캡슐, 시트 상단에서 9pt)
+    ///
+    /// 보이는 높이는 14pt지만 잡는 영역은 위아래로 10pt씩 넓힌다.
+    /// (`padding` → `contentShape` → 음수 `padding` 순서라 레이아웃은 그대로다)
     ///
     /// `highPriorityGesture`인 이유: 아래에 깔린 카카오맵은 UIKit 뷰라 터치를 직접
     /// 처리한다. 그냥 `gesture`로 달면 지도 쪽이 먼저 집어가 손잡이가 반응하지 않는다.
     private var grabber: some View {
-        ZStack {
+        ZStack(alignment: .top) {
             Color.clear
             Capsule()
                 .fill(AppColor.grabber)
                 .frame(width: 50, height: 5)
+                .padding(.top, 9)
         }
         .frame(maxWidth: .infinity)
         .frame(height: grabberAreaHeight)
+        .padding(.vertical, 10)
         .contentShape(Rectangle())
         .highPriorityGesture(dragGesture)
+        .padding(.vertical, -10)
     }
 
     private var dragGesture: some Gesture {

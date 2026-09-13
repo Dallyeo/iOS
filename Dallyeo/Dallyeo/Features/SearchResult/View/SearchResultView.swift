@@ -104,7 +104,10 @@ struct SearchResultView: View {
 
     private var resultList: some View {
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 10) {
+            // 구분선은 앞 카드에 10pt 붙고 다음 카드와는 24pt 떨어진다.
+            // (Figma 542:930 — 사진 아래 10에 Vector 2, 다음 카드 Frame 253은 24 뒤)
+            // 간격을 10/10으로 두면 선이 다음 카드에 붙어 보인다.
+            LazyVStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(viewModel.results.enumerated()), id: \.element.id) { index, place in
                     Button { onSelectPlace?(place) } label: {
                         PlaceSummaryCard(data: viewModel.cardData(for: place))
@@ -118,6 +121,8 @@ struct SearchResultView: View {
                         Rectangle()
                             .fill(AppColor.disabled)
                             .frame(height: 0.5)
+                            .padding(.top, 10)
+                            .padding(.bottom, 24)
                     }
                 }
             }
