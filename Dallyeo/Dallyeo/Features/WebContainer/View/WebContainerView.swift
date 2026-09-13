@@ -27,7 +27,8 @@ struct WebContainerView: View {
                 ContentView(
                     initialRoute: entry.route,
                     onRunFinished: { result in
-                        // V10 완주 결과는 웹 담당 → 결과를 넘기고 웹으로 복귀
+                        // 저장(`POST /runs`)은 웹이 한다 — 웹에 이미 저장·중복방지·
+                        // 실패 토스트가 구현돼 있다. 앱은 결과를 넘기기만 한다.
                         bridge.emitRunCompleted(result)
                         coordinator.dismissToWebView()
                     },

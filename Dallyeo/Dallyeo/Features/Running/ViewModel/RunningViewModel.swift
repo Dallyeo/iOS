@@ -149,6 +149,9 @@ final class RunningViewModel: NSObject {
     /// 칼로리 누적(소수 유지). Int로 바로 담으면 구간마다 버림이 쌓인다.
     private var caloriesAccumulator: Double = 0
 
+    /// 카운트다운이 끝나고 실제로 달리기 시작한 시각. `POST /runs`의 startedAt.
+    private var startedAt: Date?
+
     /// 이보다 정확도가 나쁜 샘플은 버린다(m)
     private static let maxAcceptableAccuracy: Double = 30
     /// 이보다 작게 움직였으면 노이즈로 본다(m)
@@ -199,6 +202,8 @@ final class RunningViewModel: NSObject {
     }
 
     private func beginRunning() {
+        // 일시정지 후 재개할 때는 최초 시작 시각을 유지한다.
+        if startedAt == nil { startedAt = Date() }
         phase = .running
         locationManager.startUpdatingLocation()
         startTimer()
@@ -260,13 +265,18 @@ final class RunningViewModel: NSObject {
     }
 
     private func makeResult() -> RunResult {
-        RunResult(
+        let finished = Date()
+        return RunResult(
             distanceKm: distanceMeters / 1000,
             durationSec: elapsedSec,
             paceSecPerKm: averagePaceSecPerKm,
             calories: calories,
             completionRate: completionRate,
-            traveledPath: traveledPath
+            traveledPath: traveledPath,
+            courseId: course.backendCourseId,
+            // 카운트다운 중 종료하면 시작 시각이 없다. 그때는 진행 시간만큼 거슬러 잡는다.
+            startedAt: startedAt ?? finished.addingTimeInterval(-Double(elapsedSec)),
+            finishedAt: finished
         )
     }
 

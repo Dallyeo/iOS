@@ -110,17 +110,44 @@ final class DallYeoBridge: NSObject, WKScriptMessageHandler {
     /// `runId: string`, `distanceKm: number`, `completionRate: number`가 모두 있어야 한다.
     /// (배포 번들에서 확인 — 하나라도 없으면 이벤트를 조용히 버린다)
     /// runId는 아직 BE 기록 저장이 없어 클라이언트에서 생성한다.
+    /// 완주 결과를 웹에 넘긴다.
+    ///
+    /// **키 이름은 웹이 읽는 그대로여야 한다.** 웹은 이 값을 그대로 `POST /runs`
+    /// 바디로 변환해 저장하는데, 이름이 하나라도 어긋나면 `undefined`가 실려
+    /// 백엔드가 400을 뱉고 "기록 저장에 실패했어요"만 뜬다.
+    ///
+    /// 웹 변환부(`_9`)가 읽는 키:
+    ///   courseId · routePolyline · distanceKm · durationSec
+    ///   avgPaceSecPerKm · startedAt · completedAt
+    /// 결과화면 표시에 추가로 쓰는 키:
+    ///   runId · calories · completionRate
     func emitRunCompleted(_ result: RunResult) {
-        emit("runCompleted", payload: [
+        var payload: [String: Any] = [
             "runId": UUID().uuidString,
             "distanceKm": result.distanceKm,
             "durationSec": result.durationSec,
-            "paceSecPerKm": result.paceSecPerKm,
+            "avgPaceSecPerKm": result.paceSecPerKm,
             "calories": result.calories,
             "completionRate": result.completionRate,
-            "polyline": result.traveledPath.map { ["lat": $0.latitude, "lng": $0.longitude] }
-        ])
+            "routePolyline": result.traveledPath.map { ["lat": $0.latitude, "lng": $0.longitude] },
+            "startedAt": Self.iso.string(from: result.startedAt),
+            "completedAt": Self.iso.string(from: result.finishedAt)
+        ]
+        // 직접 만든 코스는 id가 없다. nil을 그대로 넣으면 JSONSerialization이 실패해
+        // 이벤트가 통째로 안 나간다(결과화면이 아예 안 뜬다). 키를 빼면
+        // 웹이 `e.courseId ?? null`로 받아 null을 보낸다.
+        if let courseId = result.courseId {
+            payload["courseId"] = courseId
+        }
+        emit("runCompleted", payload: payload)
     }
+
+    /// `POST /runs`가 요구하는 ISO8601(UTC). 웹이 이 문자열을 그대로 넘긴다.
+    private static let iso: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.timeZone = TimeZone(secondsFromGMT: 0)
+        return f
+    }()
 
     /// 러닝을 결과 없이 빠져나감
     func emitRunCancelled() {

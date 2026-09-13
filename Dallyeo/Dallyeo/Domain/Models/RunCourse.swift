@@ -57,6 +57,9 @@ struct RunCourse {
     static let ownCourseName = "나만의 러닝 코스"
 
     let name: String
+    /// BE 추천(시드) 코스면 그 id, 직접 만든 코스면 nil.
+    /// `POST /runs`의 `courseId`로 그대로 넘어간다 — 없으면 자유 러닝으로 기록된다.
+    let backendCourseId: String?
     /// 출발 → 경유… → 도착 순서
     let points: [CoursePoint]
     /// 경로선. BE 코스는 `CourseDetail.polyline`, 직접 만든 코스는 T MAP 결과.
@@ -132,6 +135,7 @@ extension RunCourse {
         }
 
         self.name = detail.name
+        self.backendCourseId = detail.id
         self.points = built
         self.polyline = coords
         self.cumulativeMeters = detail.cumulativeMeters
@@ -170,6 +174,8 @@ extension RunCourse {
 
         let line = draft.routePolyline
         self.name = Self.ownCourseName
+        // 직접 만든 코스는 BE에 저장하지 않는다(API.md: 사용자 코스 생성은 백엔드 미저장).
+        self.backendCourseId = nil
         self.points = built
         self.polyline = line
         self.cumulativeMeters = []
