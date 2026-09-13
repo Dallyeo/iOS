@@ -30,6 +30,7 @@ struct MapView: View {
             places: viewModel.currentPlaces
         )
         .ignoresSafeArea()
+        .overlay(alignment: .top) { statusBarScrim }
         .overlay(alignment: .top) {
             // 바텀시트가 올라와도 항상 위에 표시
             VStack {
@@ -67,6 +68,33 @@ struct MapView: View {
             viewModel.requestLocationIfNeeded()
             await viewModel.loadPlaces()
         }
+    }
+
+    // MARK: - 상태바 스크림
+
+    /// 상태바 뒤를 살짝 밝히는 그라데이션.
+    ///
+    /// 검색바가 지도 위에 떠 있어 상태바 뒤는 지도가 그대로 비친다. 지도가 어두운
+    /// 곳(바다·녹지)에 걸리면 시간·배터리가 묻혀서 안 보인다.
+    /// Figma 1039:1185 — 흰색 50% → 투명, 위에서 아래로.
+    private var statusBarScrim: some View {
+        LinearGradient(
+            colors: [AppColor.white.opacity(0.5), AppColor.white.opacity(0)],
+            startPoint: .top, endPoint: .bottom
+        )
+        .frame(height: Self.statusBarHeight)
+        .frame(maxWidth: .infinity)
+        .ignoresSafeArea(edges: .top)
+        .allowsHitTesting(false)   // 지도 팬을 가로막지 않는다
+    }
+
+    /// 상태바 높이. 지도가 safe area를 무시해서 GeometryProxy가 0을 주므로
+    /// 창에서 직접 읽는다.
+    private static var statusBarHeight: CGFloat {
+        UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive }?
+            .keyWindow?.safeAreaInsets.top ?? 62   // Figma 기준값
     }
 
     // MARK: - 뒤로가기 (플로팅 원형)
