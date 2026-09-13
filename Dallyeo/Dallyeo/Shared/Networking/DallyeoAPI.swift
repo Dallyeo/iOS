@@ -84,4 +84,31 @@ enum DallyeoAPI {
     static func courseDetail(id: String) async throws -> CourseDetailDTO {
         try await client.get("/courses/\(id)")
     }
+
+    // MARK: - 러닝 기록
+
+    /// POST /runs 🔒
+    ///
+    /// 저장할 때 서버가 업적까지 판정해 **이번에 처음 딴 것만** `newAchievements`로 준다.
+    /// 조회 API에는 그 필드가 없어서, 여기서 못 받으면 결과창 도장을 다시 얻을 길이 없다.
+    static func saveRun(_ body: RunSaveRequest, accessToken: String) async throws -> RunRecordDTO {
+        try await client.post("/runs", body: body, bearer: accessToken)
+    }
+
+    /// POST /runs/{id}/image 🔒
+    ///
+    /// 저장(7.1)으로 받은 `id`에 기록 이미지를 붙인다. 응답에 `imageUrl`이 채워져 온다.
+    /// 허용 형식 jpeg/png/webp/heic/heif, 최대 10MB. 재호출하면 교체된다.
+    static func uploadRunImage(
+        runId: Int, jpeg: Data, accessToken: String
+    ) async throws -> RunRecordDTO {
+        try await client.upload(
+            "/runs/\(runId)/image",
+            fieldName: "image",
+            fileName: "route.jpg",
+            mimeType: "image/jpeg",
+            data: jpeg,
+            bearer: accessToken
+        )
+    }
 }

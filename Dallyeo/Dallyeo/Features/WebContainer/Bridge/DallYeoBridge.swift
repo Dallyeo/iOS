@@ -121,7 +121,10 @@ final class DallYeoBridge: NSObject, WKScriptMessageHandler {
     ///   avgPaceSecPerKm · startedAt · completedAt
     /// 결과화면 표시에 추가로 쓰는 키:
     ///   runId · calories · completionRate
-    func emitRunCompleted(_ result: RunResult) {
+    /// - Parameter saved: 백엔드 저장 결과. 실패했거나 비로그인이면 nil.
+    func emitRunCompleted(_ result: RunResult,
+                          saved: RunRecorder.Saved? = nil,
+                          saveFailure: RunRecorder.Failure? = nil) {
         var payload: [String: Any] = [
             "runId": UUID().uuidString,
             "distanceKm": result.distanceKm,
@@ -139,7 +142,42 @@ final class DallYeoBridge: NSObject, WKScriptMessageHandler {
         if let courseId = result.courseId {
             payload["courseId"] = courseId
         }
+        // 저장 성공 시에만 실린다.
+        //  - recordId: 웹이 `GET /runs/{id}`로 다시 불러올 수 있는 키.
+        //    브릿지로 넘긴 값은 웹뷰가 리로드되면 날아가지만 이건 남는다.
+        //  - newAchievements: 결과창 도장. 저장 응답에만 오는 값이라
+        //    앱이 받아서 넘기지 않으면 다시 얻을 방법이 없다.
+        //
+        // 기존 필드는 그대로 둔다 — 웹이 조회 방식으로 옮기기 전에도 화면이 떠야 한다.
+        if let saved {
+            payload["recordId"] = saved.recordId
+            payload["newAchievements"] = saved.newAchievements.map { achievement in
+                var item: [String: Any] = ["code": achievement.code, "name": achievement.name]
+                if let d = achievement.description { item["description"] = d }
+                if let u = achievement.unlocked { item["unlocked"] = u }
+                if let at = achievement.unlockedAt { item["unlockedAt"] = at }
+                return item
+            }
+        }
+        // 저장 결과를 웹이 판단할 수 있게 같이 넘긴다. 네이티브가 토스트를 덮어
+        // 띄우면 웹 결과화면과 두 겹으로 겹쳐서, 안내 문구는 웹이 그리게 둔다.
+        payload["saved"] = saved != nil
+        if let saveFailure {
+            payload["saveFailReason"] = Self.reasonCode(saveFailure)
+        }
         emit("runCompleted", payload: payload)
+    }
+
+    /// 저장 실패 사유를 웹이 분기할 수 있는 문자열로 바꾼다.
+    ///  - `notSignedIn`: 게스트. "로그인하면 기록이 남아요" 유도.
+    ///  - `notEnoughData`: 거리·시간이 0이라 애초에 안 보냄.
+    ///  - `network`: 요청 실패(서버 오류 포함). 재시도 안내.
+    private static func reasonCode(_ failure: RunRecorder.Failure) -> String {
+        switch failure {
+        case .notSignedIn:   "notSignedIn"
+        case .notEnoughData: "notEnoughData"
+        case .network:       "network"
+        }
     }
 
     /// `POST /runs`가 요구하는 ISO8601(UTC). 웹이 이 문자열을 그대로 넘긴다.

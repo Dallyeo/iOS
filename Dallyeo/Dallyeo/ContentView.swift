@@ -30,8 +30,9 @@ struct ContentView: View {
     /// 진입 시 곧바로 밀어 넣을 화면. 웹에서 브릿지로 특정 화면을 열 때 쓴다.
     /// nil이면 V03 지도부터 시작(네이티브 단독 실행).
     var initialRoute: AppRoute?
-    /// 러닝 완료. 웹 컨테이너가 받아 `runCompleted` 이벤트로 넘긴다.
-    var onRunFinished: ((RunResult) -> Void)?
+    /// 러닝 완료. 웹 컨테이너가 받아 저장하고 `runCompleted` 이벤트로 넘긴다.
+    /// 두 번째 인자는 기록 이미지로 쓸 지도 스냅샷 (캡처 실패 시 nil).
+    var onRunFinished: ((RunResult, UIImage?) -> Void)?
     /// 네이티브 흐름을 빠져나감(뿌리에서 뒤로가기). 웹으로 돌아갈 때 쓴다.
     var onExit: (() -> Void)?
 
@@ -117,9 +118,13 @@ struct ContentView: View {
             }
         case .running(let courseId):
             let finish: (RunResult) -> Void = { result in
+                // 화면을 걷어내기 **전에** 지도를 캡처한다.
+                // `drawHierarchy`는 화면에 붙어 있는 뷰만 그릴 수 있어서,
+                // path를 비운 뒤에는 빈 이미지가 나온다.
+                let snapshot = KakaoMapView.Coordinator.latest?.snapshot()
                 path.removeAll()
                 // 웹이 붙어 있으면 V10 완주 결과로 넘긴다. 없으면 지도로 복귀.
-                onRunFinished?(result)
+                onRunFinished?(result, snapshot)
             }
             if let courseId {
                 // 웹에서 바로 시작 — 코스를 먼저 불러온다

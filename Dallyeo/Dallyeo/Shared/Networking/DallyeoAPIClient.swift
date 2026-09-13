@@ -82,6 +82,39 @@ struct DallyeoAPIClient {
         _ = try await send(request)
     }
 
+    // MARK: - 파일 업로드
+
+    /// 파일 하나를 `multipart/form-data`로 올린다.
+    ///
+    /// 러닝 기록 이미지(`POST /runs/{id}/image`)용. 기록 저장은 JSON이고 이미지는
+    /// 파일이라 한 요청에 못 싣는다 — API.md 7.2도 2단계 흐름으로 정의돼 있다.
+    func upload<T: Decodable>(
+        _ path: String,
+        fieldName: String,
+        fileName: String,
+        mimeType: String,
+        data fileData: Data,
+        bearer: String? = nil,
+        as type: T.Type = T.self
+    ) async throws -> T {
+        var request = try makeRequest(path: path, method: "POST", bearer: bearer)
+        let boundary = "Boundary-\(UUID().uuidString)"
+        request.setValue("multipart/form-data; boundary=\(boundary)",
+                         forHTTPHeaderField: "Content-Type")
+
+        var body = Data()
+        func append(_ string: String) { body.append(Data(string.utf8)) }
+        append("--\(boundary)\r\n")
+        append("Content-Disposition: form-data; name=\"\(fieldName)\"; filename=\"\(fileName)\"\r\n")
+        append("Content-Type: \(mimeType)\r\n\r\n")
+        body.append(fileData)
+        append("\r\n--\(boundary)--\r\n")
+        request.httpBody = body
+
+        let data = try await send(request)
+        return try unwrap(data, as: T.self)
+    }
+
     // MARK: - 내부 공통
 
     private func makeRequest(

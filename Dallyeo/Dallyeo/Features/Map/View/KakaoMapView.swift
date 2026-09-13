@@ -139,8 +139,29 @@ extension KakaoMapView {
         /// 위치는 보통 1~5초마다 오므로 코스의 2%면 충분히 넉넉하다.
         private static let maxProgressStep: Float = 0.02
 
+        /// 마지막으로 만들어진 지도. 러닝 종료 시 경로 스냅샷을 뜨는 데 쓴다.
+        /// (SwiftUI 뷰 계층 밖에서 지도를 집어야 해서 전역으로 둔다)
+        static weak var latest: Coordinator?
+
+        /// 지도를 이미지로 캡처한다. 화면에 붙어 있지 않으면 nil.
+        ///
+        /// 카카오맵 SDK에는 스냅샷 API가 없다(헤더 전수 확인). 지도는 Metal로
+        /// 그려지는 `renderView`에 올라가는데, Metal 레이어는 `layer.render(in:)`으로
+        /// 뜨면 비어서 나온다. 그래서 `drawHierarchy(afterScreenUpdates:)`를 쓴다.
+        func snapshot() -> UIImage? {
+            guard let container, container.bounds.width > 0, container.bounds.height > 0 else {
+                return nil
+            }
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = UIScreen.main.scale
+            return UIGraphicsImageRenderer(bounds: container.bounds, format: format).image { _ in
+                container.drawHierarchy(in: container.bounds, afterScreenUpdates: true)
+            }
+        }
+
         func setup(container: KMViewContainer) {
             self.container = container
+            Self.latest = self
             controller = KMController(viewContainer: container)
             controller?.delegate = self
             // ProMotion(120Hz) 기기에서 지도만 60fps로 그려지는 것을 막는다.
