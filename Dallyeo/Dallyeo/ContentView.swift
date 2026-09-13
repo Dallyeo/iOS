@@ -121,10 +121,14 @@ struct ContentView: View {
                 // 화면을 걷어내기 **전에** 지도를 캡처한다.
                 // `drawHierarchy`는 화면에 붙어 있는 뷰만 그릴 수 있어서,
                 // path를 비운 뒤에는 빈 이미지가 나온다.
-                let snapshot = KakaoMapView.Coordinator.latest?.snapshot()
-                path.removeAll()
-                // 웹이 붙어 있으면 V10 완주 결과로 넘긴다. 없으면 지도로 복귀.
-                onRunFinished?(result, snapshot)
+                // 캡처는 카메라를 기록용으로 옮기고 렌더를 기다려야 해서 비동기다.
+                Task { @MainActor in
+                    let snapshot = await KakaoMapView.Coordinator.latest?
+                        .routeSnapshot(result.traveledPath)
+                    path.removeAll()
+                    // 웹이 붙어 있으면 V10 완주 결과로 넘긴다. 없으면 지도로 복귀.
+                    onRunFinished?(result, snapshot)
+                }
             }
             if let courseId {
                 // 웹에서 바로 시작 — 코스를 먼저 불러온다

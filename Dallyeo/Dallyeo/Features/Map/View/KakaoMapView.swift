@@ -63,6 +63,9 @@ struct KakaoMapView: UIViewRepresentable {
     }
 
     func updateUIView(_ container: KMViewContainer, context: Context) {
+        // 기록용 캡처 중에는 지도를 건드리지 않는다. 캡처가 맞춰 놓은 카메라·경로·마커를
+        // 화면 상태로 되돌려 버린다.
+        guard !context.coordinator.isCapturing else { return }
         context.coordinator.syncViewRect(container.bounds.size)
         // 영역 맞춤을 쓰면 마커별 카메라 이동은 하지 않는다 (서로 밀어내는 것 방지)
         context.coordinator.usesFitBounds = !fitCoordinates.isEmpty
@@ -133,6 +136,8 @@ extension KakaoMapView {
         private let routeStyleID = "routeStyleSet"
         private var didRegisterRouteStyle = false
         private var lastRouteSignature = ""
+        /// 기록용 캡처 중. 켜지면 화면에서 오는 갱신을 무시한다(`routeSnapshot` 참고).
+        private(set) var isCapturing = false
         /// 마지막으로 적용한 경로 진행률(0~1). 전진만 허용한다.
         private var lastProgress: Float = 0
         /// 위치 갱신 1회당 허용하는 최대 진행률 증가분.
@@ -152,9 +157,80 @@ extension KakaoMapView {
             guard let container, container.bounds.width > 0, container.bounds.height > 0 else {
                 return nil
             }
+            return snapshot(of: container.bounds)
+        }
+
+        /// 완주 기록용 지도 이미지를 만든다.
+        ///
+        /// 러닝 화면을 그대로 찍으면 안 된다. 그 카메라는 진행 방향으로 회전해 있고
+        /// 줌도 바짝 당겨져 있어 멈춘 자리 주변만 담기고, 경로선은 **지나온 구간이
+        /// 지워지는** 방식이라 정작 달린 길이 빠진 그림이 나온다.
+        ///
+        /// 그래서 찍기 전에 지도를 기록용으로 바꾼다 — 회전을 풀고, 실제 달린 궤적만
+        /// 다시 그리고, 그 궤적 전체가 담기도록 맞춘다. 중간에 그만둬도 달린 만큼만
+        /// 남으므로 기록과 그림이 어긋나지 않는다.
+        ///
+        /// 웹 결과화면이 정사각형으로 잘라 쓰므로 가운데 정사각형만 돌려준다.
+        @MainActor
+        func routeSnapshot(_ traveled: [CLLocationCoordinate2D]) async -> UIImage? {
+            guard let container, let mapView, traveled.count >= 2 else { return snapshot() }
+
+            let side = min(container.bounds.width, container.bounds.height)
+            guard side > 0 else { return nil }
+
+            // 여기서부터 `updateUIView`의 갱신을 막는다. 특히 진행률 갱신이 치명적인데,
+            // 방금 그린 궤적에 "끝 지점까지 왔다"를 적용해 선을 통째로 지워버린다.
+            // 화면은 캡처 직후 걷히므로 되돌릴 필요가 없다.
+            isCapturing = true
+
+            // 1. 회전·틸트 초기화. 영역 맞춤(`CameraUpdate.make(area:)`)은 회전을 건드리지 않아
+            //    먼저 풀어두지 않으면 기울어진 채로 찍힌다.
+            let mid = traveled[traveled.count / 2]
+            mapView.moveCamera(CameraUpdate.make(
+                target: MapPoint(longitude: mid.longitude, latitude: mid.latitude),
+                zoomLevel: 16, rotation: 0, tilt: 0, mapView: mapView
+            ))
+
+            // 2. 달린 궤적을 **별도 경로로 얹는다.**
+            //    기존 "route"는 진행률로 지워진 상태이고, `clearAllRoutes` 후 바로
+            //    `addRoute`하면 경로가 통째로 사라진다(`updateRouteProgress` 주석 참고).
+            //    그래서 원래 선은 숨기기만 하고 기록용 선을 새 ID로 추가한다.
+            registerRouteStyleIfNeeded()
+            let manager = mapView.getRouteManager()
+            if let layer = manager.getRouteLayer(layerID: routeLayerID) {
+                layer.getRoute(routeID: "route")?.hide()
+                let points = traveled.map { MapPoint(longitude: $0.longitude, latitude: $0.latitude) }
+                let options = RouteOptions(routeID: "record", styleID: routeStyleID, zOrder: 1)
+                options.segments = [RouteSegment(points: points, styleIndex: 0)]
+                layer.addRoute(option: options)?.show()
+            }
+
+            // 3. 현재위치 화살표를 빼고 출발/도착만 남긴다.
+            renderTypedMarkers([
+                MapMarker(coordinate: traveled[0], kind: .start),
+                MapMarker(coordinate: traveled[traveled.count - 1], kind: .destination)
+            ])
+
+            // 4. 궤적 전체가 **가운데 정사각형 안에** 들어오도록 맞춘다.
+            //    위아래 잘려나갈 만큼을 가려진 영역으로 넘겨주면 된다.
+            let cropInset = (container.bounds.height - side) / 2
+            lastFitKey = nil
+            updateFitBounds(traveled, topInset: cropInset, bottomInset: cropInset)
+
+            // 5. Metal 렌더가 새 카메라를 따라올 때까지 몇 프레임 기다린다.
+            try? await Task.sleep(for: .milliseconds(400))
+
+            let origin = CGPoint(x: container.bounds.midX - side / 2,
+                                 y: container.bounds.midY - side / 2)
+            return snapshot(of: CGRect(origin: origin, size: CGSize(width: side, height: side)))
+        }
+
+        private func snapshot(of rect: CGRect) -> UIImage? {
+            guard let container else { return nil }
             let format = UIGraphicsImageRendererFormat()
             format.scale = UIScreen.main.scale
-            return UIGraphicsImageRenderer(bounds: container.bounds, format: format).image { _ in
+            return UIGraphicsImageRenderer(size: rect.size, format: format).image { ctx in
+                ctx.cgContext.translateBy(x: -rect.origin.x, y: -rect.origin.y)
                 container.drawHierarchy(in: container.bounds, afterScreenUpdates: true)
             }
         }
