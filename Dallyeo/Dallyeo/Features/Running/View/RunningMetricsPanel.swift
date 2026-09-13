@@ -22,6 +22,9 @@ struct RunningMetricsPanel: View {
 
     // Figma 실측
     private let barHeight: CGFloat = 7
+    private let markerSize: CGFloat = 26
+    /// 화살표 상단 y(644) - 바 상단 y(640)
+    private let markerTopInset: CGFloat = 4
     private let metricsWidth: CGFloat = 310
     private let columnSpacing: CGFloat = 50
     private let rowSpacing: CGFloat = 3
@@ -50,15 +53,33 @@ struct RunningMetricsPanel: View {
 
     private var progressBar: some View {
         GeometryReader { geo in
+            let fraction = min(max(progress, 0), 1)
             ZStack(alignment: .leading) {
                 Rectangle().fill(AppColor.primary200)
                 Rectangle()
                     .fill(AppColor.primary500)
-                    .frame(width: geo.size.width * min(max(progress, 0), 1))
-                    .animation(.linear(duration: 0.3), value: progress)
+                    .frame(width: geo.size.width * fraction)
             }
+            // 채움 끝에서 현재 위치를 가리키는 화살표 (Figma 956:2374).
+            // 바 아래 흰 패널 위로 넘쳐 그려져야 해서 오버레이로 얹는다.
+            .overlay(alignment: .topLeading) {
+                progressMarker
+                    // 촉이 바 안(위에서 4pt)에 오도록. 가로는 화살표 중심을 채움 끝에 맞추되,
+                    // 시작·끝에서 화면 밖으로 잘리지 않게 양 끝을 물린다.
+                    .offset(x: min(max(geo.size.width * fraction - markerSize / 2, 0),
+                                   geo.size.width - markerSize),
+                            y: markerTopInset)
+            }
+            .animation(.linear(duration: 0.3), value: fraction)
         }
         .frame(height: barHeight)
+    }
+
+    /// 진행 위치 화살표. Figma의 벡터(26×26, #13C674)를 그대로 그린다.
+    private var progressMarker: some View {
+        NavigationArrow()
+            .fill(AppColor.primary)
+            .frame(width: markerSize, height: markerSize)
     }
 
     // MARK: - 지표 3열
