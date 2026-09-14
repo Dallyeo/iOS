@@ -27,7 +27,9 @@ struct RunPointDTO: Codable, Sendable {
 ///
 /// 400 조건: `distanceMeters`·`durationSeconds` ≤ 0 / `start`·`end` 누락 /
 /// `finishedAt < startedAt` / `image` 파트 누락.
-struct RunSaveRequest: Encodable, Sendable {
+/// 저장하지 못한 기록을 기기에 보관했다 다시 올리므로 `Decodable`도 필요하다
+/// (`PendingRunStore` 참고).
+struct RunSaveRequest: Codable, Sendable {
     /// 시드(공식) 코스를 달렸으면 그 id, 직접 만든 경로면 nil.
     /// **업적 판정의 기준**이라 공식 코스면 꼭 보낸다. nil이면 "개척자" 업적 대상.
     let courseId: String?

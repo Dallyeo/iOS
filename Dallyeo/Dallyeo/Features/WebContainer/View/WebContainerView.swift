@@ -56,5 +56,11 @@ struct WebContainerView: View {
         .onAppear {
             bridge.coordinator = coordinator
         }
+        .task {
+            // 지난번에 못 올린 기록이 있으면 올린다.
+            // 네트워크가 끊겼거나 서버가 잠깐 죽었던 경우가 여기서 회수된다.
+            // (게스트 기록은 로그인 시점에도 따로 올린다 — `AuthService.login`)
+            await RunRecorder.flushPending()
+        }
     }
 }

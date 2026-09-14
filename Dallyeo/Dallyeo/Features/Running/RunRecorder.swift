@@ -38,12 +38,10 @@ enum RunRecorder {
     }
 
     /// 기록과 지도 스냅샷을 한 요청으로 저장한다.
+    ///
+    /// 세션 확인보다 바디·이미지를 **먼저** 만든다. 게스트면 저장은 못 해도
+    /// 그 둘을 보관해 뒀다가 로그인 시점에 올려야 하기 때문이다.
     static func save(_ result: RunResult, snapshot: UIImage?) async -> Result<Saved, Failure> {
-        guard let session = await AuthService.shared.currentSession() else {
-            log("세션 없음 — 저장 건너뜀 (게스트)")
-            return .failure(.notSignedIn)
-        }
-
         // 서버가 400으로 막는 조건은 미리 걸러 무의미한 요청을 줄인다.
         let meters = Int((result.distanceKm * 1000).rounded())
         guard let start = result.traveledPath.first,
@@ -74,6 +72,13 @@ enum RunRecorder {
             finishedAt: iso.string(from: result.finishedAt)
         )
 
+        // 게스트. 결과화면이 "로그인하면 저장된다"고 안내하므로 버리지 않고 보관한다.
+        guard let session = await AuthService.shared.currentSession() else {
+            log("세션 없음 — 보관 후 로그인 때 올린다 (게스트)")
+            PendingRunStore.save(body, jpeg: jpeg)
+            return .failure(.notSignedIn)
+        }
+
         do {
             let record = try await DallyeoAPI.saveRun(body, jpeg: jpeg, accessToken: session.accessToken)
             let achievements = record.newAchievements ?? []
@@ -83,8 +88,52 @@ enum RunRecorder {
                                   imageUrl: record.imageUrl))
         } catch {
             log("저장 실패 — \(meters)m, 이미지 \(jpeg.count) bytes, \(error)")
+            // 서버가 잠깐 안 되는 것일 수 있으니 버리지 않고 보관한다.
+            PendingRunStore.save(body, jpeg: jpeg)
             return .failure(.network)
         }
+    }
+
+    /// 보관해 둔 기록을 올린다. 로그인 직후와 앱 진입 시 호출한다.
+    ///
+    /// 게스트로 달린 기록은 이때 비로소 서버에 올라간다. 올린 결과의
+    /// `newAchievements`를 어디에 보여줄지는 아직 정해지지 않아(결과화면은 이미
+    /// 닫힌 뒤다) 지금은 조용히 저장만 한다 — 업적 탭에는 다음 조회 때 반영된다.
+    @discardableResult
+    static func flushPending() async -> Int {
+        let entries = PendingRunStore.pending()
+        log("[보관] 대기 \(entries.count)건")
+        guard !entries.isEmpty else { return 0 }
+        guard let session = await AuthService.shared.currentSession() else {
+            log("[보관] 세션 없음 — \(entries.count)건 그대로 둠")
+            return 0
+        }
+
+        var uploaded = 0
+        for entry in entries {
+            guard let jpeg = try? Data(contentsOf: entry.imageURL) else {
+                PendingRunStore.remove(entry)
+                continue
+            }
+            do {
+                let record = try await DallyeoAPI.saveRun(
+                    entry.body, jpeg: jpeg, accessToken: session.accessToken
+                )
+                log("[보관] 올림 완료 id=\(record.id), 신규 업적 \((record.newAchievements ?? []).count)개 → \(record.imageUrl ?? "이미지 없음")")
+                PendingRunStore.remove(entry)
+                uploaded += 1
+            } catch {
+                // 서버가 400으로 거절하면 다시 보내도 마찬가지다. 붙들고 있으면
+                // 매번 같은 실패를 반복하므로 버린다. 그 외(네트워크 등)는 남긴다.
+                if case APIClientError.business = error {
+                    log("[보관] 서버가 거절 — 폐기 \(entry.id): \(error)")
+                    PendingRunStore.remove(entry)
+                } else {
+                    log("[보관] 올리기 실패 — 다음에 재시도 \(entry.id): \(error)")
+                }
+            }
+        }
+        return uploaded
     }
 
     /// `POST /runs`는 ISO8601(UTC)을 받는다.

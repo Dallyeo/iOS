@@ -58,6 +58,10 @@ final class AuthService {
         let credential = try await authProvider.authenticate()
         let session = try await backend.exchange(credential)
         try store.save(session)
+        // 게스트로 달려 보관해 둔 기록을 이제 올릴 수 있다.
+        // 결과화면이 "로그인하면 저장된다"고 안내한 그 약속을 여기서 지킨다.
+        // 로그인 응답을 붙잡지 않도록 뒤에서 돌린다.
+        Task { await RunRecorder.flushPending() }
         return session
     }
 
