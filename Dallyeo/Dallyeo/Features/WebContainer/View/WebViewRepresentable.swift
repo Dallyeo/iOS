@@ -38,6 +38,15 @@ struct WebViewRepresentable: UIViewRepresentable {
         // 스와이프 뒤로가기 비활성화 (네이티브에서 처리)
         webView.allowsBackForwardNavigationGestures = false
 
+        // 인셋 조정을 끈다. 켜져 있으면 UIKit이 safe area(상단 62 + 하단 34)를
+        // `adjustedContentInset`에 더하고, WebKit이 그만큼 깎인 높이로 레이아웃
+        // 뷰포트를 잡는다 → `100dvh`가 874가 아니라 778이 되어 하단에 흰 띠가 남는다.
+        //
+        // 지금까지는 `WebContainerView`의 `.ignoresSafeArea()` 덕에 SwiftUI가
+        // 알아서 꺼 주고 있었지만, 그건 암묵적 동작이라 기기·OS에 따라 안 걸린다
+        // (실제로 특정 기기에서만 흰 띠가 난다는 제보가 있었다). 직접 박아 둔다.
+        webView.scrollView.contentInsetAdjustmentBehavior = .never
+
         // 브릿지에 웹뷰 연결
         Task { @MainActor in
             bridge.webView = webView
