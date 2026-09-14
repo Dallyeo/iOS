@@ -97,8 +97,8 @@ enum RunRecorder {
     /// 보관해 둔 기록을 올린다. 로그인 직후와 앱 진입 시 호출한다.
     ///
     /// 게스트로 달린 기록은 이때 비로소 서버에 올라간다. 올린 결과의
-    /// `newAchievements`를 어디에 보여줄지는 아직 정해지지 않아(결과화면은 이미
-    /// 닫힌 뒤다) 지금은 조용히 저장만 한다 — 업적 탭에는 다음 조회 때 반영된다.
+    /// `newAchievements`는 따로 띄우지 않는다 — 도장은 기록 화면에서 보여주지
+    /// 않기로 했고(팀 확인), 업적 탭에는 다음 조회 때 자연히 반영된다.
     @discardableResult
     static func flushPending() async -> Int {
         let entries = PendingRunStore.pending()
