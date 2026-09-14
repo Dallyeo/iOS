@@ -40,6 +40,9 @@ struct RunSaveRequest: Codable, Sendable {
     let end: RunPointDTO
     let distanceMeters: Int
     let durationSeconds: Int
+    /// 소모 칼로리(kcal). **서버가 계산하지 않고 보낸 값을 그대로 보관한다.**
+    /// 안 보내면 조회 응답에서도 키가 빠져 기록 화면에 칼로리를 못 띄운다.
+    let calories: Int?
     /// 없으면 "얼리버드"(8시 이전 시작) 업적만 판정되지 않는다.
     let startedAt: String   // ISO8601 (UTC)
     /// 기록의 날짜. 없으면 서버 저장 시각을 쓴다.
@@ -77,6 +80,8 @@ struct RunRecordDTO: Decodable, Sendable {
     let durationSeconds: Int?
     /// 서버가 거리·시간으로 계산해 준다.
     let averagePaceSeconds: Int?
+    /// 저장할 때 보낸 값이 그대로 온다(서버는 계산하지 않는다).
+    let calories: Int?
     /// 서버 기준 절대 경로(`/uploads/runs/….jpg`). 표시할 때 base URL을 붙인다.
     let imageUrl: String?
     let startedAt: String?

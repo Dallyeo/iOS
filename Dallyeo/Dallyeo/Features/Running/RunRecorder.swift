@@ -69,6 +69,9 @@ enum RunRecorder {
             end: RunPointDTO(end),
             distanceMeters: meters,
             durationSeconds: result.durationSec,
+            // 서버가 계산하지 않는 값이라 지금 안 보내면 기록 화면에서 영영 못 본다.
+            // 보관해 뒀다 나중에 올릴 때도 이 값이 그대로 쓰인다(재계산 불가).
+            calories: result.calories,
             startedAt: iso.string(from: result.startedAt),
             finishedAt: iso.string(from: result.finishedAt)
         )
@@ -120,7 +123,7 @@ enum RunRecorder {
                 let record = try await DallyeoAPI.saveRun(
                     entry.body, jpeg: jpeg, accessToken: session.accessToken
                 )
-                log("[보관] 올림 완료 id=\(record.id), 신규 업적 \((record.newAchievements ?? []).count)개 → \(record.imageUrl ?? "이미지 없음")")
+                log("[보관] 올림 완료 id=\(record.id), 신규 업적 \((record.newAchievements ?? []).count)개, \(record.calories.map { "\($0)kcal" } ?? "칼로리 없음") → \(record.imageUrl ?? "이미지 없음")")
                 PendingRunStore.remove(entry)
                 uploaded += 1
             } catch {
