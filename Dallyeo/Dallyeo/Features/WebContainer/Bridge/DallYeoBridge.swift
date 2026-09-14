@@ -10,6 +10,8 @@ import WebKit
 import UIKit
 import OSLog
 import CoreLocation
+import Photos
+import SafariServices
 
 @MainActor
 final class DallYeoBridge: NSObject, WKScriptMessageHandler {
@@ -75,6 +77,17 @@ final class DallYeoBridge: NSObject, WKScriptMessageHandler {
         case .requestPermission:
             guard let id else { return }
             await handleRequestPermission(params: params, id: id)
+
+        case .saveImage:
+            guard let id else { return }
+            await handleSaveImage(params: params, id: id)
+
+        case .shareImage:
+            guard let id else { return }
+            await handleShareImage(params: params, id: id)
+
+        case .openExternalUrl:
+            handleOpenExternalUrl(params: params)   // 단방향, 응답 없음
 
         case .openCourseSearch:
             coordinator?.openCourseSearch()   // 단방향, 응답 없음
@@ -232,6 +245,117 @@ final class DallYeoBridge: NSObject, WKScriptMessageHandler {
     /// 러닝을 결과 없이 빠져나감
     func emitRunCancelled() {
         emit("runCancelled", payload: [:])
+    }
+
+    // MARK: - 완주 티켓 이미지 (V10/V12)
+
+    /// 웹이 만든 PNG를 사진 앱에 저장한다.
+    ///
+    /// 이미지를 **웹이 만드는** 이유: 티켓은 CSS 마스크로 절취선 구멍을 뚫고
+    /// transform으로 기울어 있어 `takeSnapshot`으로 찍으면 구멍·모서리에 뒤 배경이
+    /// 같이 찍힌다. 네이티브는 받은 PNG를 전달만 한다.
+    private func handleSaveImage(params: [String: Any]?, id: String) async {
+        guard let image = Self.image(from: params) else {
+            reject(id: id, error: .invalidParams)
+            return
+        }
+        // 추가 전용 권한이면 사진을 읽지 않으므로 사용자 부담이 적다.
+        let status = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
+        guard status == .authorized || status == .limited else {
+            Self.log.info("saveImage: 사진 권한 없음 (\(status.rawValue, privacy: .public))")
+            resolve(id: id, data: "denied")
+            return
+        }
+        do {
+            try await PHPhotoLibrary.shared().performChanges {
+                PHAssetChangeRequest.creationRequestForAsset(from: image)
+            }
+            resolve(id: id, data: "saved")
+        } catch {
+            Self.log.error("saveImage 실패: \(String(describing: error), privacy: .public)")
+            resolve(id: id, data: "failed")
+        }
+    }
+
+    /// 웹이 만든 PNG를 공유 시트로 넘긴다. 사용자가 취소해도 성공으로 본다.
+    private func handleShareImage(params: [String: Any]?, id: String) async {
+        guard let image = Self.image(from: params) else {
+            reject(id: id, error: .invalidParams)
+            return
+        }
+        guard let presenter = Self.topViewController() else {
+            reject(id: id, error: .init(kind: "failed", message: "표시할 화면을 찾지 못했습니다"))
+            return
+        }
+
+        var items: [Any] = [image]
+        if let payload = params?["payload"] as? [String: Any],
+           let text = payload["text"] as? String, !text.isEmpty {
+            items.append(text)
+        }
+
+        let controller = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        // iPad에서 팝오버 앵커가 없으면 크래시한다.
+        controller.popoverPresentationController?.sourceView = presenter.view
+        controller.popoverPresentationController?.sourceRect = CGRect(
+            x: presenter.view.bounds.midX, y: presenter.view.bounds.maxY, width: 0, height: 0
+        )
+        // 시트를 닫은 뒤에 resolve한다(계약서 §2).
+        controller.completionWithItemsHandler = { [weak self] _, _, _, _ in
+            self?.resolve(id: id)
+        }
+        presenter.present(controller, animated: true)
+    }
+
+    /// `data:image/png;base64,...` 를 이미지로.
+    private static func image(from params: [String: Any]?) -> UIImage? {
+        guard let payload = params?["payload"] as? [String: Any],
+              let dataUrl = payload["dataUrl"] as? String,
+              let comma = dataUrl.firstIndex(of: ","),
+              let data = Data(base64Encoded: String(dataUrl[dataUrl.index(after: comma)...])),
+              let image = UIImage(data: data) else {
+            log.error("이미지 페이로드를 해석하지 못했습니다")
+            return nil
+        }
+        return image
+    }
+
+    // MARK: - 외부 링크
+
+    /// 약관·문의(노션/구글폼)와 카카오맵 링크를 연다.
+    ///
+    /// **같은 WebView에서 열면 안 된다.** 웹은 로컬 번들 SPA라 외부 주소로
+    /// 네비게이션하면 앱 화면이 통째로 바뀌고 돌아올 방법이 없다.
+    ///
+    /// 카카오맵처럼 앱이 받아 주는 유니버설 링크는 그 앱으로 넘기고,
+    /// 나머지(약관 등)는 인앱 사파리로 띄워 바로 돌아올 수 있게 한다.
+    private func handleOpenExternalUrl(params: [String: Any]?) {
+        guard let raw = params?["url"] as? String,
+              let url = URL(string: raw), url.scheme == "https" else {
+            Self.log.error("openExternalUrl: https URL이 아님 (\(String(describing: params?["url"]), privacy: .public))")
+            return
+        }
+        UIApplication.shared.open(url, options: [.universalLinksOnly: true]) { opened in
+            guard !opened else { return }   // 카카오맵 등 설치된 앱이 받아 감
+            MainActor.assumeIsolated {
+                guard let presenter = Self.topViewController() else {
+                    UIApplication.shared.open(url)   // 최후 수단: 사파리로 전환
+                    return
+                }
+                presenter.present(SFSafariViewController(url: url), animated: true)
+            }
+        }
+    }
+
+    /// 지금 화면에 떠 있는 최상단 뷰컨트롤러.
+    private static func topViewController() -> UIViewController? {
+        let root = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive }?
+            .keyWindow?.rootViewController
+        var top = root
+        while let presented = top?.presentedViewController { top = presented }
+        return top
     }
 
     // MARK: - Login/Logout

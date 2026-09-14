@@ -68,15 +68,20 @@ enum BridgeMethod: String, CaseIterable, Sendable {
     case getCurrentSession
     case requestPermission
     case getPermissionStatus
+    /// 완주 티켓 PNG를 사진 앱에 저장. `"saved" | "denied" | "failed"` 반환
+    case saveImage
+    /// 완주 티켓 PNG를 공유 시트로. 취소해도 성공으로 본다
+    case shareImage
     // 단방향
     case openCourseSearch
     case openCourseConfirm
     case startRun
+    /// 약관·문의·카카오맵 링크를 앱 밖(또는 인앱 사파리)에서 연다
+    case openExternalUrl
     // 향후 예약 (지금 호출 안 함)
     // case openOSSettings
     // case pickProfilePhoto
     // case share
-    // case openExternalUrl
 }
 
 // MARK: - AnyCodableValue (JSON 타입 래퍼)
