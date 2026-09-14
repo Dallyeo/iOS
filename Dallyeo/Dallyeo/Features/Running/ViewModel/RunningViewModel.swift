@@ -273,6 +273,8 @@ final class RunningViewModel: NSObject {
             calories: calories,
             completionRate: completionRate,
             traveledPath: traveledPath,
+            // 러닝이 끝난 지금 한 번만 만든다. 재전송 때도 이 값이 그대로 쓰인다.
+            clientRunId: UUID().uuidString,
             courseId: course.backendCourseId,
             startPlaceName: course.startPoint?.name,
             endPlaceName: course.destinationPoint?.name,

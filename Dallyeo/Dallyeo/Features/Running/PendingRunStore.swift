@@ -27,8 +27,8 @@ enum PendingRunStore {
     }
 
     /// 보관 기간. 지나면 올리지 않고 지운다.
-    /// ※ 잠정값 — 기획 확정 시 조정.
-    static let expiry: TimeInterval = 7 * 24 * 60 * 60
+    /// 백엔드 가이드(`client-run-sync-guide.md` §8) 권장치.
+    static let expiry: TimeInterval = 30 * 24 * 60 * 60
 
     /// 한 번에 들고 있을 최대 건수. 오래된 것부터 버린다.
     /// 게스트로 계속 달리는 사람의 디스크를 무한정 쓰지 않기 위한 상한.

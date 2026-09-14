@@ -126,7 +126,9 @@ final class DallYeoBridge: NSObject, WKScriptMessageHandler {
                           saved: RunRecorder.Saved? = nil,
                           saveFailure: RunRecorder.Failure? = nil) {
         var payload: [String: Any] = [
-            "runId": UUID().uuidString,
+            // 러닝 종료 시 한 번 만든 값. 같은 러닝이면 다시 보내도 같은 id다
+            // (매번 새로 만들면 결과화면을 다시 열 때마다 값이 달라진다).
+            "runId": result.clientRunId,
             "distanceKm": result.distanceKm,
             "durationSec": result.durationSec,
             "avgPaceSecPerKm": result.paceSecPerKm,

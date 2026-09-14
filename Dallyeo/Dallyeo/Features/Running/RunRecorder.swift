@@ -63,6 +63,7 @@ enum RunRecorder {
         }
 
         let body = RunSaveRequest(
+            clientRunId: result.clientRunId,
             courseId: result.courseId,
             start: RunPointDTO(start),
             end: RunPointDTO(end),
@@ -123,10 +124,11 @@ enum RunRecorder {
                 PendingRunStore.remove(entry)
                 uploaded += 1
             } catch {
-                // 서버가 400으로 거절하면 다시 보내도 마찬가지다. 붙들고 있으면
-                // 매번 같은 실패를 반복하므로 버린다. 그 외(네트워크 등)는 남긴다.
-                if case APIClientError.business = error {
-                    log("[보관] 서버가 거절 — 폐기 \(entry.id): \(error)")
+                // 데이터가 잘못된 경우(400)만 버린다. 다시 보내도 계속 실패하고
+                // 붙들고 있으면 매번 같은 요청을 반복하게 된다.
+                // 서버 오류(500)·네트워크 실패는 나중에 성공할 수 있으므로 남긴다.
+                if isPermanentRejection(error) {
+                    log("[보관] 데이터 오류로 폐기 \(entry.id): \(error)")
                     PendingRunStore.remove(entry)
                 } else {
                     log("[보관] 올리기 실패 — 다음에 재시도 \(entry.id): \(error)")
@@ -134,6 +136,15 @@ enum RunRecorder {
             }
         }
         return uploaded
+    }
+
+    /// 다시 보내도 소용없는 실패인지.
+    ///
+    /// 400 계열(필수 필드 누락·형식 오류·이미지 문제)만 해당한다.
+    /// `INTERNAL_ERROR`(500)도 같은 `business`로 오지만 그건 재시도 대상이다.
+    private static func isPermanentRejection(_ error: Error) -> Bool {
+        guard case APIClientError.business(let body) = error else { return false }
+        return body.code == "VALIDATION_ERROR" || body.code == "BAD_REQUEST"
     }
 
     /// `POST /runs`는 ISO8601(UTC)을 받는다.
