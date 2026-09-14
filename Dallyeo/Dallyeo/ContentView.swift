@@ -53,6 +53,13 @@ struct ContentView: View {
             LocationProvider.shared.start()
             if let initialRoute, path.isEmpty { path.append(initialRoute) }
         }
+        .onChange(of: path) { _, newPath in
+            // 웹에서 특정 화면으로 바로 들어온 경우(예: V02 추천코스 → V08),
+            // 그 화면에서 뒤로가기를 하면 스택이 비면서 루트인 V03 지도뷰가 드러난다.
+            // 사용자가 온 곳은 웹이므로 웹으로 내보낸다.
+            guard initialRoute != nil, newPath.isEmpty else { return }
+            onExit?()
+        }
     }
 
     @ViewBuilder
