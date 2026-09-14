@@ -155,11 +155,20 @@ private struct MapBottomSheetModifier<Sheet: View>: ViewModifier {
         }
         .frame(maxWidth: .infinity)
         .frame(height: grabberAreaHeight)
-        .padding(.vertical, 10)
+        .padding(.top, 10)
+        .padding(.bottom, grabbableGapBelow)
         .contentShape(Rectangle())
         .highPriorityGesture(dragGesture)
-        .padding(.vertical, -10)
+        .padding(.top, -10)
+        .padding(.bottom, -grabbableGapBelow)
     }
+
+    /// 손잡이 아래로 더 잡을 수 있는 높이.
+    ///
+    /// 시트 내용 첫 요소(세그먼트) 위에는 빈 여백이 있다. 거기까지 잡히게 해서
+    /// 손잡이를 정확히 안 눌러도 시트가 움직이게 한다. 세그먼트 버튼 영역은
+    /// 건드리지 않는다.
+    private let grabbableGapBelow: CGFloat = 23
 
     private var dragGesture: some Gesture {
         DragGesture(minimumDistance: 1)
@@ -171,12 +180,35 @@ private struct MapBottomSheetModifier<Sheet: View>: ViewModifier {
                 let flick = value.predictedEndTranslation.height - value.translation.height
                 let boost = (flick < 0) == (value.translation.height < 0) ? flick : 0
                 let projected = selectedHeight - value.translation.height - boost * 0.3
-                let target = nearestDetent(to: projected)
+                var target = nearestDetent(to: projected)
+
+                // 단 사이가 멀면(380 → 화면 상단) 웬만큼 끌어도 중간을 못 넘어
+                // 원래 단으로 돌아간다. 빠르게 던졌으면 거리와 무관하게 최소
+                // 한 단은 움직이게 한다 — 시트가 "안 올라간다"는 느낌의 주범이었다.
+                if abs(value.velocity.height) > flickVelocity, target == selection {
+                    target = adjacentDetent(from: selection, movingUp: value.velocity.height < 0)
+                }
+
                 withAnimation(.snappy(duration: 0.25)) {
                     selection = target
                     dragTranslation = 0
                 }
             }
+    }
+
+    /// 이 속도(pt/s)를 넘으면 "던졌다"로 보고 한 단 움직인다.
+    private let flickVelocity: CGFloat = 300
+
+    /// 높이 순으로 정렬한 단들에서 한 칸 옆.
+    private func adjacentDetent(from current: SheetDetent, movingUp: Bool) -> SheetDetent {
+        let sorted = detents.sorted {
+            $0.resolved(containerHeight: containerHeight, safeTop: safeTop)
+                < $1.resolved(containerHeight: containerHeight, safeTop: safeTop)
+        }
+        guard let index = sorted.firstIndex(of: current) else { return current }
+        let next = movingUp ? index + 1 : index - 1
+        guard sorted.indices.contains(next) else { return current }
+        return sorted[next]
     }
 
     private func nearestDetent(to height: CGFloat) -> SheetDetent {
