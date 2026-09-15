@@ -24,10 +24,6 @@ final class PermissionHandler {
         switch type {
         case .location:
             status = mapLocationStatus(locationManager.authorizationStatus)
-        case .camera:
-            status = mapAVStatus(AVCaptureDevice.authorizationStatus(for: .video))
-        case .photoLibrary:
-            status = mapPhotoStatus(PHPhotoLibrary.authorizationStatus(for: .readWrite))
         case .notification:
             // 동기적으로 상태를 반환할 수 없으므로 notDetermined 반환
             // 실제 상태는 requestPermission에서 확인
@@ -48,14 +44,6 @@ final class PermissionHandler {
             // 권한 요청 후 약간의 딜레이
             try? await Task.sleep(for: .milliseconds(500))
             status = mapLocationStatus(locationManager.authorizationStatus)
-
-        case .camera:
-            let granted = await AVCaptureDevice.requestAccess(for: .video)
-            status = granted ? .authorized : .denied
-
-        case .photoLibrary:
-            let photoStatus = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
-            status = mapPhotoStatus(photoStatus)
 
         case .notification:
             do {
